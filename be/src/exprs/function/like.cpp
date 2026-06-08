@@ -506,6 +506,23 @@ Status FunctionLikeBase::hs_prepare(FunctionContext* context, const char* expres
         return Status::RuntimeError<false>(HYPERSCAN_BOUNDED_REPEAT_ERROR);
     }
 
+#if defined(__riscv)
+    // On RISC-V, vectorscan's SIMDE backend has performance issues with patterns
+    // containing multiple .* wildcards (e.g., '%special%requests%'). Fall back to RE2.
+    {
+        int dotstar_count = 0;
+        const char* p = expression;
+        while ((p = strstr(p, ".*")) != nullptr) {
+            dotstar_count++;
+            p += 2;
+        }
+        if (dotstar_count > 1) {
+            *database = nullptr;
+            *scratch = nullptr;
+            return Status::RuntimeError<false>("hyperscan disabled for multi-wildcard patterns on RISC-V");
+        }
+    }
+#endif
     hs_compile_error_t* compile_err;
     auto res = hs_compile(expression, HS_FLAG_DOTALL | HS_FLAG_ALLOWEMPTY | HS_FLAG_UTF8,
                           HS_MODE_BLOCK, nullptr, database, &compile_err);
