@@ -194,7 +194,8 @@ static inline void a_store(volatile int *p, int v)
 
 #ifndef a_barrier
 #define a_barrier a_barrier
-static void a_barrier()
+__attribute__((unused))
+static void a_barrier(void)
 {
 	volatile int tmp = 0;
 	a_cas(&tmp, 0, 0);
@@ -226,12 +227,22 @@ static inline void a_or_64(volatile uint64_t *p, uint64_t v)
 #endif
 
 #ifndef a_cas_p
+#if defined(__LP64__) || defined(__riscv) || defined(__aarch64__)
+#define a_cas_p a_cas_p
+static inline void *a_cas_p(volatile void *p, void *t, void *s)
+{
+	void *expected = t;
+	__atomic_compare_exchange_n((void **)p, &expected, s, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+	return expected;
+}
+#else
 typedef char a_cas_p_undefined_but_pointer_not_32bit[-sizeof(char) == 0xffffffff ? 1 : -1];
 #define a_cas_p a_cas_p
 static inline void *a_cas_p(volatile void *p, void *t, void *s)
 {
 	return (void *)a_cas((volatile int *)p, (int)t, (int)s);
 }
+#endif
 #endif
 
 #ifndef a_or_l
