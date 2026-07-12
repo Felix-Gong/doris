@@ -175,7 +175,7 @@ void __explicit_bzero_chk(void * buf, size_t len, size_t unused)
     explicit_bzero(buf, len);
 }
 
-#ifndef __ARM_NEON
+#if !defined(__ARM_NEON) && !defined(__riscv)
 int snprintf(char* __restrict __s, size_t __maxlen, const char* __restrict __format, ...);
 
 int strfromf128(char* restrict string, size_t size, const char* restrict format, __float128 value) {
