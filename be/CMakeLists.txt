@@ -43,9 +43,13 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(ppc64le.*|PPC64LE.*)")
     set (ARCH_PPC64LE 1)
 endif ()
 
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(riscv64.*|RISCV64.*)")
+    set (ARCH_RISCV64 1)
+endif ()
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
     set (OS_LINUX 1)
     add_definitions(-D OS_LINUX)
+    add_definitions(-D_UCS2 -D_UNICODE)
 elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin")
     set (OS_MACOSX 1)
     add_definitions(-D OS_MACOSX)
@@ -286,25 +290,13 @@ set(USE_STAT64 0)
 
 # disable clucene bthread supported.
 set(USE_BTHREAD OFF)
-
-# Out of source build need to set the binary dir
-add_subdirectory(${CONTRIB_PATH}/clucene ${PROJECT_BINARY_DIR}/clucene EXCLUDE_FROM_ALL)
-
+# CLUCENE DISABLED (broken submodule):
+add_subdirectory(${CONTRIB_PATH}/clucene ${PROJECT_BINARY_DIR}/clucene)
 set(clucene_options -fno-omit-frame-pointer -w -Wall)
-if (COMPILER_CLANG)
-    set(clucene_options ${clucene_options} -Wno-c++11-narrowing)
-else ()
-    set(clucene_options ${clucene_options} -Wno-narrowing)
-endif()
-
 target_compile_options(clucene-core-static PRIVATE ${clucene_options})
 target_compile_options(clucene-shared-static PRIVATE ${clucene_options})
 target_compile_options(clucene-contribs-lib PRIVATE ${clucene_options})
-target_compile_options(ic PRIVATE ${clucene_options})
-
-install(DIRECTORY
-    ${CONTRIB_PATH}/clucene/src/contribs-lib/CLucene/analysis/jieba/dict
-    DESTINATION ${OUTPUT_DIR})
+# target_compile_options(ic PRIVATE ${clucene_options})
 
 install(DIRECTORY
     ${BASE_DIR}/dict/icu/uax29
@@ -339,11 +331,24 @@ if (NOT OS_MACOSX) # MACOSX's lld will core dump
     # In terms of performance, mold> lld> gold> ld
     set(CUSTUM_LINKER_COMMAND "ld")
     TRY_TO_CHANGE_LINKER("mold" "mold")
-    TRY_TO_CHANGE_LINKER("lld" "LLD")
+    # lld on riscv64 does not support R_RISCV_ADD64/R_RISCV_SUB64 relocations
+    # in .gcc_except_table sections (GCC-style exception tables).
+    # Fall through to ld.bfd which handles these correctly.
+    if (NOT CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64|riscv")
+        TRY_TO_CHANGE_LINKER("lld" "LLD")
+    endif ()
     TRY_TO_CHANGE_LINKER("gold" "GNU gold")
     if (NOT CUSTUM_LINKER_COMMAND STREQUAL "ld")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=${CUSTUM_LINKER_COMMAND}")
     endif()
+
+# lld on riscv64 is strict about duplicate symbols from static archives.
+# Several thirdparty deps (gRPC, arrow, etc.) bring in abseil symbols that
+# collide with the explicit absl:: targets. Allow duplicates to match
+# behaviour of GNU ld / gold on other architectures.
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64|riscv")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition")
+endif ()
 endif()
 
 
@@ -608,7 +613,16 @@ set(DORIS_LINK_LIBS
     CommonCPP
 )
 
-set(absl_DIR ${THIRDPARTY_DIR}/lib/cmake/absl)
+if (ARCH_RISCV64)
+    set(DORIS_LINK_LIBS ${DORIS_LINK_LIBS}
+        -Wl,--whole-archive
+        icuuc
+        icui18n
+        icudata
+        -Wl,--no-whole-archive)
+endif()
+
+set(absl_DIR ${THIRDPARTY_DIR}/lib64/cmake/absl)
 find_package(absl)
 
 # COMMON_THIRDPARTY are thirdparty dependencies that can run on all platform

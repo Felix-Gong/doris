@@ -34,3 +34,7 @@ add_library(Runtime STATIC
 )
 
 pch_reuse(Runtime)
+
+if(ARCH_RISCV64)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zba")
+endif()

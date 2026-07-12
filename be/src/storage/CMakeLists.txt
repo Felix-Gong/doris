@@ -45,3 +45,7 @@ if (OS_MACOSX)
 endif()
 
 pch_reuse(Storage)
+
+if(ARCH_RISCV64)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zba")
+endif()

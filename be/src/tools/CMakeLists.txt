@@ -116,3 +116,7 @@ if (BUILD_INDEX_TOOL)
             )
     endif()
 endif()
+
+if(ARCH_RISCV64)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zba")
+endif()

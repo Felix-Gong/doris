@@ -25,3 +25,7 @@ file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS *.cpp)
 add_library(Load STATIC ${SRC_FILES})
 
 pch_reuse(Load)
+
+if(ARCH_RISCV64)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zba")
+endif()

@@ -32,3 +32,7 @@ endif()
 add_library(Format STATIC ${SRC_FILES})
 
 pch_reuse(Format)
+
+if(ARCH_RISCV64)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zba")
+endif()
