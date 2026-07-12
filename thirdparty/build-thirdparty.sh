@@ -370,11 +370,11 @@ strip_lib() {
             echo "Must specify the library to be stripped."
             exit 1
         fi
-        if [[ ! -f "${TP_LIB_DIR}/$1" ]]; then
+        if [[ ! -f "${TP_LIB_DIR}/$1" && ! -f "${TP_LIB_DIR}64/$1" ]]; then
             echo "Library to be stripped (${TP_LIB_DIR}/$1) does not exist."
             exit 1
         fi
-        strip --strip-debug --strip-unneeded "${TP_LIB_DIR}/$1"
+        if [[ -f "${TP_LIB_DIR}/$1" ]]; then strip --strip-debug --strip-unneeded "${TP_LIB_DIR}/$1"; else strip --strip-debug --strip-unneeded "${TP_LIB_DIR}64/$1"; fi
     fi
 }
 
@@ -421,6 +421,8 @@ build_openssl() {
         OPENSSL_PLATFORM="darwin64-${MACHINE_TYPE}-cc"
     elif [[ "${MACHINE_TYPE}" == "aarch64" ]]; then
         OPENSSL_PLATFORM="linux-aarch64"
+    elif [[ "${MACHINE_TYPE}" == "riscv64" ]]; then
+        OPENSSL_PLATFORM="linux64-riscv64"
     fi
 
     check_if_source_exist "${OPENSSL_SOURCE}"
@@ -430,10 +432,10 @@ build_openssl() {
         CXXFLAGS="-I${TP_INCLUDE_DIR}" \
         LDFLAGS="-L${TP_LIB_DIR}" \
         LIBDIR="lib" \
-        ./Configure --prefix="${TP_INSTALL_DIR}" --with-rand-seed=devrandom -shared "${OPENSSL_PLATFORM}"
+        OPENSSL_EXTRA=""; if [[ "${MACHINE_TYPE}" == "riscv64" ]]; then OPENSSL_EXTRA="no-asm no-async"; fi; ./Configure --prefix="${TP_INSTALL_DIR}" --with-rand-seed=devrandom -shared ${OPENSSL_EXTRA} "${OPENSSL_PLATFORM}"
     # NOTE(amos): Never use '&&' to concat commands as it will eat error code
     # See https://mywiki.wooledge.org/BashFAQ/105 for more detail.
-    make -j "${PARALLEL}"
+    make -j "${PARALLEL}" build_libs
     make install_sw
     # NOTE(zc): remove this dynamic library files to make libcurl static link.
     # If I don't remove this files, I don't known how to make libcurl link static library
@@ -804,18 +806,33 @@ build_hyperscan() {
     make install
 
     check_if_source_exist "${HYPERSCAN_SOURCE}"
+    # RISC-V: Copy SIMDE headers for vectorscan
+    if [[ "$(uname -m)" == "riscv64" ]]; then
+        SIMDE_SRC="${TP_SOURCE_DIR}/simde-416091ebdb9e901b29d026633e73167d6353a0b0"
+        if [[ -d "${SIMDE_SRC}/simde" ]]; then
+            rm -rf "${TP_SOURCE_DIR}/${HYPERSCAN_SOURCE}/simde"
+            mkdir -p "${TP_SOURCE_DIR}/${HYPERSCAN_SOURCE}/simde"
+            cp -r "${SIMDE_SRC}/simde" "${TP_SOURCE_DIR}/${HYPERSCAN_SOURCE}/simde/"
+            echo "Copied SIMDE headers for RISC-V vectorscan build"
+        fi
+    fi
     cd "${TP_SOURCE_DIR}/${HYPERSCAN_SOURCE}"
 
     # We don't need to build tools/hsbench which depends on sqlite3 installed.
     rm -rf "${TP_SOURCE_DIR}/${HYPERSCAN_SOURCE}/tools/hsbench"
 
+    # RISC-V: Clean cmake cache to avoid stale SIMDE check results
+    rm -rf "${BUILD_DIR}"
     mkdir -p "${BUILD_DIR}"
     cd "${BUILD_DIR}"
 
+    if [[ "$(uname -m)" == "riscv64" ]]; then
+        VEC_CMAKE_FLAGS="-DSIMDE_BACKEND=1 -DSIMDE_NATIVE=1"
+    fi
     CXXFLAGS="-D_HAS_AUTO_PTR_ETC=0" \
         "${CMAKE_CMD}" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
         -G "${GENERATOR}" -DBUILD_SHARED_LIBS=0 -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-        -DBOOST_ROOT="${TP_INSTALL_DIR}" -DCMAKE_INSTALL_PREFIX="${TP_INSTALL_DIR}" -DBUILD_EXAMPLES=OFF ..
+        -DBOOST_ROOT="${TP_INSTALL_DIR}" -DCMAKE_INSTALL_PREFIX="${TP_INSTALL_DIR}" -DBUILD_EXAMPLES=OFF ${VEC_CMAKE_FLAGS} ..
     "${BUILD_SYSTEM}" -j "${PARALLEL}" install
     strip_lib libhs.a
 }
@@ -852,20 +869,28 @@ build_mysql() {
     rm -rf CMakeCache.txt CMakeFiles/
 
     if [[ ! -d "${BOOST_SOURCE}" ]]; then
-        cp -rf "${TP_SOURCE_DIR}/${BOOST_SOURCE}" ./
+        ln -sf "${TP_SOURCE_DIR}/${BOOST_SOURCE}" ./"${BOOST_SOURCE}"
     fi
 
     if [[ "${KERNEL}" != 'Darwin' ]]; then
-        cflags='-static -pthread -lrt -std=gnu89'
-        cxxflags='-static -pthread -lrt'
+        if [[ "$(uname -m)" == "riscv64" ]]; then
+            cflags='-pthread -lrt -std=gnu89'
+            cxxflags='-pthread -lrt -lstdc++'
+            link_search_flag=""
+        else
+            cflags='-static -pthread -lrt -std=gnu89'
+            cxxflags='-static -pthread -lrt'
+            link_search_flag="-DCMAKE_LINK_SEARCH_END_STATIC=1"
+        fi
     else
         cflags='-pthread -std=gnu89'
         cxxflags='-pthread'
+        link_search_flag=""
     fi
 
     CFLAGS="${cflags}" CXXFLAGS="${cxxflags}" \
         "${CMAKE_CMD}" -G "${GENERATOR}" ../ -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-        -DCMAKE_LINK_SEARCH_END_STATIC=1 \
+        "${link_search_flag}" \
         -DWITH_BOOST="$(pwd)/${BOOST_SOURCE}" -DCMAKE_INSTALL_PREFIX="${TP_INSTALL_DIR}/mysql" \
         -DWITHOUT_SERVER=1 -DWITH_ZLIB=1 -DZLIB_ROOT="${TP_INSTALL_DIR}" \
         -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="-O3 -g -fabi-version=2 -fno-omit-frame-pointer -fno-strict-aliasing -std=gnu++11" \
@@ -1022,7 +1047,7 @@ build_odbc() {
 
     CFLAGS="-I${TP_INCLUDE_DIR} -Wno-int-conversion -std=gnu89 -Wno-implicit-function-declaration" \
         LDFLAGS="-L${TP_LIB_DIR}" \
-        ./configure --prefix="${TP_INSTALL_DIR}" --with-included-ltdl --enable-static=yes --enable-shared=no
+        ./configure --prefix="${TP_INSTALL_DIR}" --with-included-ltdl --enable-static=yes --enable-shared=no --build=riscv64-linux-gnu
 
     make -j "${PARALLEL}"
     make install
@@ -1177,7 +1202,11 @@ build_arrow() {
         -DRapidJSON_ROOT="${TP_INSTALL_DIR}" \
         -Dorc_ROOT="${TP_INSTALL_DIR}" \
         -Dxsimd_SOURCE=BUNDLED \
-        -DBrotli_SOURCE=BUNDLED \
+        -DBrotli_SOURCE=SYSTEM \
+        -DBROTLI_LIB="${TP_INSTALL_DIR}/lib64/libbrotlienc.a" -DBROTLI_INCLUDE_DIR="${TP_INSTALL_DIR}/include" \
+        -DBROTLI_ENC_LIB="${TP_INSTALL_DIR}/lib64/libbrotlienc.a" \
+        -DBROTLI_DEC_LIB="${TP_INSTALL_DIR}/lib64/libbrotlidec.a" \
+        -DBROTLI_COMMON_LIB="${TP_INSTALL_DIR}/lib64/libbrotlicommon.a" \
         -DARROW_LZ4_USE_SHARED=OFF \
         -DLZ4_ROOT="${TP_INSTALL_DIR};${TP_INSTALL_DIR}/include/lz4" \
         -DLZ4_LIB="${TP_INSTALL_DIR}/lib/liblz4.a" -DLZ4_INCLUDE_DIR="${TP_INSTALL_DIR}/include/lz4" \
@@ -1197,10 +1226,6 @@ build_arrow() {
     "${BUILD_SYSTEM}" -j "${PARALLEL}"
     "${BUILD_SYSTEM}" install
 
-    #copy dep libs
-    cp -rf ./brotli_ep/src/brotli_ep-install/lib/libbrotlienc-static.a "${TP_INSTALL_DIR}/lib64/libbrotlienc.a"
-    cp -rf ./brotli_ep/src/brotli_ep-install/lib/libbrotlidec-static.a "${TP_INSTALL_DIR}/lib64/libbrotlidec.a"
-    cp -rf ./brotli_ep/src/brotli_ep-install/lib/libbrotlicommon-static.a "${TP_INSTALL_DIR}/lib64/libbrotlicommon.a"
     strip_lib libarrow.a
     strip_lib libarrow_compute.a
     strip_lib libparquet.a
@@ -1358,6 +1383,8 @@ build_bitshuffle() {
     # Becuase aarch64 don't support avx2, disable it.
     if [[ "${MACHINE_TYPE}" == "aarch64" || "${MACHINE_TYPE}" == 'arm64' ]]; then
         arches=('default' 'neon')
+    elif [[ "${MACHINE_TYPE}" == "riscv64" ]]; then
+        arches=("default")
     fi
 
     to_link=""
@@ -1529,11 +1556,14 @@ build_cctz() {
 
     rm -rf CMakeCache.txt CMakeFiles/
 
+    if [[ "$(uname -m)" == "riscv64" ]]; then
+        VEC_CMAKE_FLAGS="${VEC_CMAKE_FLAGS} -DSIMDE_BACKEND=1 -DSIMDE_NATIVE=1"
+    fi
     # -Wno-elaborated-enum-base to make C++20 on MacOS happy
     "${CMAKE_CMD}" -G "${GENERATOR}" \
     -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -Wno-elaborated-enum-base" \
     -DBUILD_EXAMPLES=OFF \
-    -DBUILD_TOOLS=OFF \
+    -DBUILD_TOOLS=OFF ${VEC_CMAKE_FLAGS} \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${TP_INSTALL_DIR}" -DBUILD_TESTING=OFF ..
     "${BUILD_SYSTEM}" -j "${PARALLEL}" install
 }
@@ -1577,7 +1607,7 @@ build_aws_sdk() {
         -DCMAKE_PREFIX_PATH="${TP_INSTALL_DIR}" -DBUILD_SHARED_LIBS=OFF -DENABLE_TESTING=OFF \
         -DCURL_LIBRARY_RELEASE="${TP_INSTALL_DIR}/lib/libcurl.a" -DZLIB_LIBRARY_RELEASE="${TP_INSTALL_DIR}/lib/libz.a" \
         -DBUILD_ONLY="core;s3;s3-crt;transfer;identity-management;sts;kinesis" \
-        -DCMAKE_CXX_FLAGS="-Wno-nonnull -Wno-deprecated-literal-operator ${warning_deprecated_literal_operator} -Wno-deprecated-declarations ${warning_dangling_reference}" -DCPP_STANDARD=17
+        -DLIBATOMIC_EXISTS=ON -DHAVE_ATOMICS_WITH_LIBATOMIC=ON -DCMAKE_CXX_FLAGS="-Wno-nonnull -Wno-deprecated-literal-operator ${warning_deprecated_literal_operator} -Wno-deprecated-declarations ${warning_dangling_reference}" -DCMAKE_EXE_LINKER_FLAGS="-latomic" -DCPP_STANDARD=17
 
     cd "${BUILD_DIR}"
 
@@ -2108,6 +2138,12 @@ build_azure() {
     x86_64 | amd64)
         vcpkg_arch='x64'
         ;;
+    riscv64 | riscv)
+        # vcpkg has no official riscv64 triplet; reuse the generic x64-linux one.
+        # All ports build from source on riscv64 (no prebuilt binaries), so the
+        # triplet's only real job here is requesting release-only builds.
+        vcpkg_arch='x64'
+        ;;
     *)
         echo "azure: unsupported machine type ${azure_machine_type}" >&2
         exit 1
@@ -2160,7 +2196,9 @@ EOF
     # live in libSystem - and -ldl would fail the link there.
     local azure_link_flags=()
     if [[ "${KERNEL}" != 'Darwin' ]]; then
-        azure_link_flags=(-DCMAKE_EXE_LINKER_FLAGS="-ldl" -DCMAKE_SHARED_LINKER_FLAGS="-ldl")
+        # -ldl: libcrypto.a needs dlopen/dlsym/dlclose/dlerror.
+        # -lstdc++: the RISC-V clang wrapper does not auto-link libstdc++.
+        azure_link_flags=(-DCMAKE_EXE_LINKER_FLAGS="-ldl -lstdc++" -DCMAKE_SHARED_LINKER_FLAGS="-ldl -lstdc++")
     fi
 
     # vcpkg fetches the sources of curl, libxml2, openssl and zlib from their upstream
@@ -2252,7 +2290,7 @@ build_icu() {
     mkdir -p "${BUILD_DIR}"
     cd "${BUILD_DIR}"
 
-    ../configure --prefix="${TP_INSTALL_DIR}" \
+    LDFLAGS="-lstdc++" ../configure --prefix="${TP_INSTALL_DIR}" \
         --enable-static \
         --disable-shared \
         --enable-release \
@@ -2615,7 +2653,7 @@ for package in "${packages[@]}"; do
         cleanup_package_source "${package}"
         echo "debug after clean: ${package}"
         df -h
-        du -sh "${TP_DIR}"
+        #du -sh "${TP_DIR}"
     fi
 done
 

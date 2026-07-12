@@ -173,6 +173,13 @@ if [[ "${MACHINE_TYPE}" == "aarch64" || "${MACHINE_TYPE}" == 'arm64' ]]; then
     HYPERSCAN_SOURCE=vectorscan-vectorscan-5.4.11
     HYPERSCAN_MD5SUM="e67b70403cba6c1654a9fef4fd15a2f2"
 fi
+if [[ "${MACHINE_TYPE}" == 'riscv64' ]]; then
+    echo "use vectorscan instead of hyperscan on riscv64"
+    HYPERSCAN_DOWNLOAD="https://github.com/VectorCamp/vectorscan/archive/refs/tags/vectorscan/5.4.12.tar.gz"
+    HYPERSCAN_NAME=vectorscan-5.4.12.tar.gz
+    HYPERSCAN_SOURCE=vectorscan-vectorscan-5.4.12
+    HYPERSCAN_MD5SUM="384eab5b23831993df96e5fa55f9951e"
+fi
 
 # ragel (dependency for hyperscan)
 RAGEL_DOWNLOAD="http://www.colm.net/files/ragel/ragel-6.10.tar.gz"
@@ -629,6 +636,8 @@ export TP_ARCHIVES=(
     'CURL'
     'RE2'
     'HYPERSCAN'
+    'SIMDE'
+    'SSE2RVV'
     'RAGEL'
     'BOOST'
     'MYSQL'
@@ -718,3 +727,15 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     read -r -a TP_ARCHIVES <<<"${TP_ARCHIVES[*]} BINUTILS GETTEXT"
     export TP_ARCHIVES
 fi
+
+# SIMDE (RISC-V SIMD emulation)
+SIMDE_DOWNLOAD="https://github.com/simd-everywhere/simde/archive/416091ebdb9e901b29d026633e73167d6353a0b0.tar.gz"
+SIMDE_NAME=simde-416091ebdb9e901b29d026633e73167d6353a0b0.tar.gz
+SIMDE_SOURCE=simde-416091ebdb9e901b29d026633e73167d6353a0b0
+SIMDE_MD5SUM="54c2120579439e53d63770b476a3d8a2"
+
+# sse2rvv (SSE to RISC-V Vector translation)
+SSE2RVV_DOWNLOAD="https://github.com/pattonkan/sse2rvv/archive/refs/tags/v0.1.0.tar.gz"
+SSE2RVV_NAME=sse2rvv-0.1.0.tar.gz
+SSE2RVV_SOURCE=sse2rvv-0.1.0
+SSE2RVV_MD5SUM="109d4ead2fb0307a2c3f44d61bb4f1c4"
