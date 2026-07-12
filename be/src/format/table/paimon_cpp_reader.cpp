@@ -24,6 +24,7 @@
 #include <utility>
 
 #include "arrow/c/bridge.h"
+#if __has_include(<paimon/defs.h>)
 #include "arrow/record_batch.h"
 #include "arrow/result.h"
 #include "core/block/block.h"
@@ -415,3 +416,4 @@ std::map<std::string, std::string> PaimonCppReader::_build_options() const {
 }
 
 } // namespace doris
+#endif

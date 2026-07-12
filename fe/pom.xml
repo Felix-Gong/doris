@@ -205,11 +205,6 @@ under the License.
         </pluginManagement>
         <extensions>
             <extension>
-                <groupId>kr.motd.maven</groupId>
-                <artifactId>os-maven-plugin</artifactId>
-                <version>1.7.0</version>
-            </extension>
-            <extension>
                 <groupId>org.apache.maven.extensions</groupId>
                 <artifactId>maven-build-cache-extension</artifactId>
                 <version>1.2.2</version>
@@ -234,6 +229,9 @@ under the License.
         <module>fe-grpc</module>
     </modules>
     <properties>
+        <os.detected.arch>aarch64</os.detected.arch>
+        <os.detected.name>linux</os.detected.name>
+        <os.detected.version>6.12</os.detected.version>
         <doris.hive.catalog.shade.version>3.1.1</doris.hive.catalog.shade.version>
         <!-- iceberg 1.9.1 depends avro on 1.12 -->
         <avro.version>1.12.1</avro.version>
@@ -353,7 +351,7 @@ under the License.
         <commons-compress.version>1.27.1</commons-compress.version>
         <scala.version>2.12.10</scala.version>
         <kryo.version>4.0.2</kryo.version>
-        <lombok.version>1.18.24</lombok.version>
+        <lombok.version>1.18.34</lombok.version>
         <tree-printer.version>1.2</tree-printer.version>
         <hamcrest.version>2.1</hamcrest.version>
         <httpclient.version>4.5.13</httpclient.version>

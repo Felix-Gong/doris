@@ -24,6 +24,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#if __has_include(<paimon/defs.h>)
 #include <utility>
 #include <vector>
 
@@ -677,3 +678,4 @@ namespace doris {
 void register_paimon_doris_file_system() {}
 
 } // namespace doris
+#endif

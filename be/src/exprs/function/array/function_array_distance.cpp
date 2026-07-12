@@ -23,7 +23,6 @@
 
 namespace doris {
 
-FAISS_PRAGMA_IMPRECISE_FUNCTION_BEGIN
 float CosineDistance::distance(const float* x, const float* y, size_t d) {
     if (d == 0) {
         return 2.0f;
@@ -44,20 +43,11 @@ float CosineDistance::distance(const float* x, const float* y, size_t d) {
         return 2.0f;
     }
 
-    // Accumulate the norm in double and take a single square root. Computing
-    // (double)squared_x * (double)squared_y cannot overflow for finite float inputs,
-    // whereas the float expression sqrt(squared_x * squared_y) overflows to +inf for
-    // large-magnitude vectors and would silently yield a distance of 1.0.
     const double norm = std::sqrt(static_cast<double>(squared_x) * static_cast<double>(squared_y));
-    // Clamp the cosine to [-1, 1] before mapping to a distance. Floating-point rounding
-    // can push the ratio slightly outside [-1, 1] (e.g. 1.0000001 for identical vectors),
-    // which would otherwise produce a tiny negative distance.
     const float cosine = std::clamp(static_cast<float>(dot_prod / norm), -1.0f, 1.0f);
     return 1.0f - cosine;
 }
-FAISS_PRAGMA_IMPRECISE_FUNCTION_END
 
-FAISS_PRAGMA_IMPRECISE_FUNCTION_BEGIN
 float CosineSimilarity::distance(const float* x, const float* y, size_t d) {
     if (d == 0) {
         return 0.0f;
@@ -78,12 +68,9 @@ float CosineSimilarity::distance(const float* x, const float* y, size_t d) {
         return 0.0f;
     }
 
-    // See CosineDistance::distance: the double-precision norm avoids float overflow,
-    // and clamping keeps the result within the mathematically valid [-1, 1] range.
     const double norm = std::sqrt(static_cast<double>(squared_x) * static_cast<double>(squared_y));
     return std::clamp(static_cast<float>(dot_prod / norm), -1.0f, 1.0f);
 }
-FAISS_PRAGMA_IMPRECISE_FUNCTION_END
 
 void register_function_array_distance(SimpleFunctionFactory& factory) {
     factory.register_function<FunctionArrayDistance<L1Distance>>();

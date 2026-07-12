@@ -24,6 +24,7 @@
 #include "core/column/column_const.h"
 #include "core/column/column_nullable.h"
 #include "core/data_type/data_type.h"
+#if __has_include(<paimon/defs.h>)
 #include "core/data_type/data_type_nullable.h"
 #include "core/field.h"
 #include "core/types.h"
@@ -655,3 +656,4 @@ std::optional<paimon::FieldType> PaimonPredicateConverter::_to_paimon_field_type
 }
 
 } // namespace doris
+#endif

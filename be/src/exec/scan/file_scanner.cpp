@@ -1078,6 +1078,7 @@ Status FileScanner::_get_next_reader() {
                 _cur_reader = std::move(mc_reader);
             } else if (range.__isset.table_format_params &&
                        range.table_format_params.table_format_type == "paimon") {
+#if __has_include(<paimon/defs.h>)
                 if (_state->query_options().__isset.enable_paimon_cpp_reader &&
                     _state->query_options().enable_paimon_cpp_reader) {
                     auto cpp_reader = PaimonCppReader::create_unique(_file_slot_descs, _state,
@@ -1092,7 +1093,9 @@ Status FileScanner::_get_next_reader() {
                     init_status =
                             static_cast<GenericReader*>(cpp_reader.get())->init_reader(&jni_ctx);
                     _cur_reader = std::move(cpp_reader);
-                } else {
+                } else 
+#endif
+                {
                     auto paimon_reader = PaimonJniReader::create_unique(_file_slot_descs, _state,
                                                                         _profile, range, _params);
                     init_status =

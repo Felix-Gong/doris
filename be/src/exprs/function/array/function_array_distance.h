@@ -17,8 +17,26 @@
 
 #pragma once
 
-#include <faiss/impl/platform_macros.h>
-#include <faiss/utils/distances.h>
+#include <cmath>
+#include <cstddef>
+
+namespace faiss_impl {
+inline float fvec_L1(const float* x, const float* y, size_t d) {
+    float sum = 0;
+    for (size_t i = 0; i < d; ++i) sum += std::fabs(x[i] - y[i]);
+    return sum;
+}
+inline float fvec_L2sqr(const float* x, const float* y, size_t d) {
+    float sum = 0;
+    for (size_t i = 0; i < d; ++i) { float diff = x[i] - y[i]; sum += diff * diff; }
+    return sum;
+}
+inline float fvec_inner_product(const float* x, const float* y, size_t d) {
+    float sum = 0;
+    for (size_t i = 0; i < d; ++i) sum += x[i] * y[i];
+    return sum;
+}
+} // namespace faiss_impl
 #include <gen_cpp/Types_types.h>
 
 #include "common/exception.h"
@@ -44,7 +62,7 @@ class L1Distance {
 public:
     static constexpr auto name = "l1_distance";
     static float distance(const float* x, const float* y, size_t d) {
-        return faiss::fvec_L1(x, y, d);
+        return faiss_impl::fvec_L1(x, y, d);
     }
 };
 
@@ -52,7 +70,7 @@ class L2Distance {
 public:
     static constexpr auto name = "l2_distance";
     static float distance(const float* x, const float* y, size_t d) {
-        return std::sqrt(faiss::fvec_L2sqr(x, y, d));
+        return std::sqrt(faiss_impl::fvec_L2sqr(x, y, d));
     }
 };
 
@@ -60,7 +78,7 @@ class InnerProduct {
 public:
     static constexpr auto name = "inner_product";
     static float distance(const float* x, const float* y, size_t d) {
-        return faiss::fvec_inner_product(x, y, d);
+        return faiss_impl::fvec_inner_product(x, y, d);
     }
 };
 
