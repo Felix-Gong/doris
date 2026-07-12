@@ -473,12 +473,14 @@ fi
 # arrow patch is used to get the raw orc reader for filter prune.
 if [[ " ${TP_ARCHIVES[*]} " =~ " ARROW " ]]; then
     if [[ "${ARROW_SOURCE}" == "arrow-apache-arrow-13.0.0" ]]; then
-        cd "${TP_SOURCE_DIR}/${ARROW_SOURCE}"
-        if [[ ! -f "${PATCHED_MARK}" ]]; then
-            patch -p1 <"${TP_PATCH_DIR}/apache-arrow-13.0.0.patch"
-            touch "${PATCHED_MARK}"
+        if [[ -d "${TP_SOURCE_DIR}/${ARROW_SOURCE}" ]]; then
+            cd "${TP_SOURCE_DIR}/${ARROW_SOURCE}"
+            if [[ ! -f "${PATCHED_MARK}" ]]; then
+                patch -p1 <"${TP_PATCH_DIR}/apache-arrow-13.0.0.patch"
+                touch "${PATCHED_MARK}"
+            fi
+            cd -
         fi
-        cd -
     fi
     if [[ "${ARROW_SOURCE}" == "arrow-apache-arrow-24.0.0" ]]; then
         cd "${TP_SOURCE_DIR}/${ARROW_SOURCE}"
@@ -491,7 +493,6 @@ if [[ " ${TP_ARCHIVES[*]} " =~ " ARROW " ]]; then
             patch -p1 <"${TP_PATCH_DIR}/apache-arrow-24.0.0-lzo.patch"
             touch "${PATCHED_MARK}"
         fi
-        cd -
     fi
     echo "Finished patching ${ARROW_SOURCE}"
 fi
