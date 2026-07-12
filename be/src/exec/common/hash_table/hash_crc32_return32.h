@@ -20,6 +20,7 @@
 #include "core/string_ref.h"
 #include "core/types.h"
 #include "core/uint128.h"
+#include <crc32c/crc32c.h>
 
 // CRC32 hash functions that return uint32_t instead of size_t.
 // Uses type-appropriate _mm_crc32_u{8,16,32,64} intrinsics to avoid
@@ -31,6 +32,7 @@ static constexpr uint32_t CRC32_HASH_SEED = 0xFFFFFFFF;
 
 // Type-dispatched CRC32 computation primitives.
 // Each overload uses the narrowest intrinsic that matches the input width.
+#if defined(__SSE4_2__) || defined(__aarch64__)
 inline uint32_t crc32_compute(uint32_t crc, uint8_t v) {
     return _mm_crc32_u8(crc, v);
 }
@@ -43,6 +45,22 @@ inline uint32_t crc32_compute(uint32_t crc, uint32_t v) {
 inline uint32_t crc32_compute(uint32_t crc, uint64_t v) {
     return static_cast<uint32_t>(_mm_crc32_u64(crc, v));
 }
+#else
+// Software fallback: use the crc32c library to provide true CRC32C, so the
+// hash values stay identical on platforms without SSE 4.2 / hardware CRC32.
+inline uint32_t crc32_compute(uint32_t crc, uint8_t v) {
+    return crc32c::Extend(crc, &v, 1);
+}
+inline uint32_t crc32_compute(uint32_t crc, uint16_t v) {
+    return crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&v), 2);
+}
+inline uint32_t crc32_compute(uint32_t crc, uint32_t v) {
+    return crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&v), 4);
+}
+inline uint32_t crc32_compute(uint32_t crc, uint64_t v) {
+    return crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&v), 8);
+}
+#endif
 
 template <typename T>
 struct HashCRC32Return32;

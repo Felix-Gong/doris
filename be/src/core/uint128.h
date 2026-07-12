@@ -51,7 +51,11 @@ struct UInt128HashCRC32 {
 #else
 
 /// On other platforms we do not use CRC32. NOTE This can be confusing.
-struct UInt128HashCRC32 : public UInt128Hash {};
+struct UInt128HashCRC32 {
+    size_t operator()(const UInt128& x) const {
+        return ::doris::util_hash::HashLen16(x.low(), x.high());
+    }
+};
 
 #endif
 

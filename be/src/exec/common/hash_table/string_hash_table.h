@@ -76,7 +76,7 @@ struct StringHashTableHash {
 #else
     template <typename T>
     size_t ALWAYS_INLINE operator()(T key) const {
-        return util_hash::CityHash64(reinterpret_cast<const char*>(&key), sizeof(T));
+        return doris::util_hash::CityHash64(reinterpret_cast<const char*>(&key), sizeof(T));
     }
 #endif
     size_t ALWAYS_INLINE operator()(doris::StringRef key) const {

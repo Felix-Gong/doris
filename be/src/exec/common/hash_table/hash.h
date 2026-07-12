@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <crc32c/crc32c.h>
 #include <type_traits>
 
 #include "core/extended_types.h"
@@ -229,7 +230,13 @@ struct HashCRC32<doris::UInt256> {
         crc = _mm_crc32_u64(crc, x.items[3]);
         return crc;
 #else
-        return Hash128to64({Hash128to64({x.a, x.b}), Hash128to64({x.c, x.d})});
+        uint64_t crc = crc32c::Extend(~static_cast<uint32_t>(0),
+                                      reinterpret_cast<const uint8_t*>(&x.items[0]),
+                                      sizeof(x.items[0]));
+        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.items[1]), sizeof(x.items[1]));
+        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.items[2]), sizeof(x.items[2]));
+        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.items[3]), sizeof(x.items[3]));
+        return crc;
 #endif
     }
 };
@@ -245,8 +252,13 @@ struct HashCRC32<wide::Int256> {
         crc = _mm_crc32_u64(crc, x.items[3]);
         return crc;
 #else
-        return Hash128to64(
-                {Hash128to64({x.items[0], x.items[1]}), Hash128to64({x.items[2], x.items[3]})});
+        uint64_t crc = crc32c::Extend(~static_cast<uint32_t>(0),
+                                      reinterpret_cast<const uint8_t*>(&x.items[0]),
+                                      sizeof(x.items[0]));
+        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.items[1]), sizeof(x.items[1]));
+        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.items[2]), sizeof(x.items[2]));
+        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.items[3]), sizeof(x.items[3]));
+        return crc;
 #endif
     }
 };
@@ -293,47 +305,77 @@ struct HashCRC32<doris::DecimalV2Value> {
     }
 };
 
+
 #include "common/compile_check_avoid_begin.h"
 
 template <>
 struct HashCRC32<doris::UInt72> {
     size_t operator()(const doris::UInt72& x) const {
+#if defined(__SSE4_2__) || defined(__aarch64__)
         doris::UInt64 crc = -1ULL;
         crc = _mm_crc32_u8(crc, x.a);
         crc = _mm_crc32_u64(crc, x.b);
         return crc;
+#else
+        doris::UInt64 crc = crc32c::Extend(~static_cast<uint32_t>(0), &x.a, 1);
+        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.b), sizeof(x.b));
+        return crc;
+#endif
     }
 };
 
 template <>
 struct HashCRC32<doris::UInt96> {
     size_t operator()(const doris::UInt96& x) const {
+#if defined(__SSE4_2__) || defined(__aarch64__)
         doris::UInt64 crc = -1ULL;
         crc = _mm_crc32_u32(crc, x.a);
         crc = _mm_crc32_u64(crc, x.b);
         return crc;
+#else
+        uint64_t crc = crc32c::Extend(~static_cast<uint32_t>(0),
+                                      reinterpret_cast<const uint8_t*>(&x.a), sizeof(x.a));
+        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.b), sizeof(x.b));
+        return crc;
+#endif
     }
 };
 
 template <>
 struct HashCRC32<doris::UInt104> {
     size_t operator()(const doris::UInt104& x) const {
+#if defined(__SSE4_2__) || defined(__aarch64__)
         doris::UInt64 crc = -1ULL;
         crc = _mm_crc32_u8(crc, x.a);
         crc = _mm_crc32_u32(crc, x.b);
         crc = _mm_crc32_u64(crc, x.c);
         return crc;
+#else
+        uint64_t crc = crc32c::Extend(~static_cast<uint32_t>(0),
+                                      reinterpret_cast<const uint8_t*>(&x.a), sizeof(x.a));
+        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.b), sizeof(x.b));
+        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.c), sizeof(x.c));
+        return crc;
+#endif
     }
 };
 
 template <>
 struct HashCRC32<doris::UInt136> {
     size_t operator()(const doris::UInt136& x) const {
+#if defined(__SSE4_2__) || defined(__aarch64__)
         doris::UInt64 crc = -1ULL;
         crc = _mm_crc32_u8(crc, x.a);
         crc = _mm_crc32_u64(crc, x.b);
         crc = _mm_crc32_u64(crc, x.c);
         return crc;
+#else
+        uint64_t crc = crc32c::Extend(~static_cast<uint32_t>(0),
+                                      reinterpret_cast<const uint8_t*>(&x.a), sizeof(x.a));
+        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.b), sizeof(x.b));
+        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.c), sizeof(x.c));
+        return crc;
+#endif
     }
 };
 

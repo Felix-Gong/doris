@@ -27,6 +27,13 @@
 #include <immintrin.h> // IWYU pragma: export
 #include <mm_malloc.h> // IWYU pragma: export
 #include <smmintrin.h> // IWYU pragma: export
+#elif defined(__riscv)
+// No SSE intrinsics on RISC-V; define SSE constants for compilation portability
+static const int _SIDD_CMP_EQUAL_EACH = 0x08;
+static const int _SIDD_UBYTE_OPS = 0x00;
+static const int _SIDD_NEGATIVE_POLARITY = 0x10;
+#else
+#error "Unsupported architecture"
 #endif
 
 namespace doris {

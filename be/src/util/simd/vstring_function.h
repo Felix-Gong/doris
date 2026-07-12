@@ -55,6 +55,7 @@ inline uint8_t get_utf8_byte_length(uint8_t character) {
 // 7-bit values (0x00..0x7F). Otherwise, it returns false (0).
 inline bool validate_ascii_fast(const char* src, size_t len) {
     size_t i = 0;
+#if defined(__SSE2__) || defined(__aarch64__)
     __m128i has_error = _mm_setzero_si128();
     if (len >= 16) {
         for (; i <= len - 16; i += 16) {
@@ -63,6 +64,9 @@ inline bool validate_ascii_fast(const char* src, size_t len) {
         }
     }
     int error_mask = _mm_movemask_epi8(has_error);
+#else
+    int error_mask = 0;
+#endif
 
     char tail_has_error = 0;
     for (; i < len; i++) {
@@ -91,7 +95,6 @@ inline bool validate_ascii_fast_avx(const char* src, size_t len) {
     for (; i < len; i++) {
         tail_has_error |= src[i];
     }
-    error_mask |= (tail_has_error & 0x80);
 
     return !error_mask;
 }
