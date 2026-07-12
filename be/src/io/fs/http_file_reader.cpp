@@ -81,7 +81,7 @@ HttpFileReader::HttpFileReader(const OpenFileInfo& fileInfo, std::string url, in
     if (max_size_iter != _extend_kv.end()) {
         try {
             _max_request_size_bytes = std::stoull(max_size_iter->second);
-        } catch (const std::exception& _) {
+        } catch (const std::exception&) {
             LOG(WARNING) << "Invalid http.max.request.size.bytes value: " << max_size_iter->second
                          << ", using default: " << DEFAULT_MAX_REQUEST_SIZE;
             _max_request_size_bytes = DEFAULT_MAX_REQUEST_SIZE;

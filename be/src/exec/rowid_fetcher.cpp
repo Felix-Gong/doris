@@ -950,7 +950,8 @@ Status RowIdStorageReader::read_batch_external_row(
                 std::counting_semaphore semaphore {max_file_scanners};
 
                 size_t idx = 0;
-                for (const auto& [_, scan_info] : scan_rows) {
+                for (const auto& scan_row : scan_rows) {
+                    const auto& scan_info = scan_row.second;
                     semaphore.acquire();
                     RETURN_IF_ERROR(remote_scan_sched->submit_scan_task(
                             SimplifiedScanTask(
@@ -1035,7 +1036,11 @@ Status RowIdStorageReader::read_doris_format_row(
         int64_t* lookup_row_data_ms, std::unordered_map<SegKey, SegItem, HashOfSegKey>& seg_map,
         std::unordered_map<IteratorKey, IteratorItem, HashOfIteratorKey>& iterator_map,
         Block& result_block) {
-    auto [tablet_id, rowset_id, segment_id] = file_mapping->get_doris_format_info();
+    // Explicit variables (not structured bindings) for OpenMP lambda capture compatibility
+    auto doris_format_info = file_mapping->get_doris_format_info();
+    auto tablet_id = std::get<0>(doris_format_info);
+    auto rowset_id = std::get<1>(doris_format_info);
+    auto segment_id = std::get<2>(doris_format_info);
     SegKey seg_key {.tablet_id = tablet_id, .rowset_id = rowset_id, .segment_id = segment_id};
 
     BaseTabletSPtr tablet;

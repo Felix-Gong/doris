@@ -253,11 +253,11 @@ void MemTableMemoryLimiter::refresh_mem_tracker() {
     std::lock_guard<std::mutex> l(_lock);
     _refresh_mem_tracker();
     std::stringstream ss;
-    Limit limit = Limit::NONE;
+    Limit limit = Limit::LIMIT_NONE;
     if (_soft_limit_reached()) {
         limit = _hard_limit_reached() ? Limit::HARD : Limit::SOFT;
         ss << "reached " << (limit == Limit::HARD ? "hard" : "soft") << " limit";
-    } else if (_last_limit == Limit::NONE) {
+    } else if (_last_limit == Limit::LIMIT_NONE) {
         return;
     } else {
         ss << "ended " << (_last_limit == Limit::HARD ? "hard" : "soft") << " limit";

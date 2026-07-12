@@ -215,8 +215,10 @@ public:
         size_t size = lhs_column->size();
 
         bool lhs_is_nullable = lhs_column->is_nullable();
-        auto [lhs_data_column, lhs_null_map] =
+        auto lhs_raw_data_and_null_map =
                 _get_raw_data_and_null_map(lhs_column, lhs_is_nullable);
+        const uint8_t* lhs_data_column = lhs_raw_data_and_null_map.first;
+        const uint8_t* lhs_null_map = lhs_raw_data_and_null_map.second;
         size_t filted = simd::count_zero_num((int8_t*)lhs_data_column, size);
         bool lhs_all_true = (filted == 0);
         bool lhs_all_false = (filted == size);
@@ -404,7 +406,7 @@ private:
                                  size_t size) {
 #ifdef NDEBUG
 #if defined(__clang__)
-#pragma clang loop vectorize(enable)
+#pragma clang loop vectorize(disable)
 #elif defined(__GNUC__) && (__GNUC__ >= 5)
 #pragma GCC ivdep
 #endif
@@ -425,7 +427,7 @@ private:
                              size_t size) {
 #ifdef NDEBUG
 #if defined(__clang__)
-#pragma clang loop vectorize(enable)
+#pragma clang loop vectorize(disable)
 #elif defined(__GNUC__) && (__GNUC__ >= 5)
 #pragma GCC ivdep
 #endif

@@ -25,6 +25,11 @@
 #include "exprs/aggregate/helpers.h"
 
 namespace doris {
+// clang++ is stricter than GCC about matching template template parameters.
+// AggFunctionOrthBitmapFunc has two typename params (Impl, ExprTag), so we
+// wrap it with a single-param alias for use with creator_with_type_list_base.
+template <typename T>
+using AggOrthBitmapFuncWrap = AggFunctionOrthBitmapFunc<T>;
 
 template <template <PrimitiveType> class Impl>
 AggregateFunctionPtr create_aggregate_function_orthogonal(const std::string& name,
@@ -41,7 +46,7 @@ AggregateFunctionPtr create_aggregate_function_orthogonal(const std::string& nam
     } else {
         AggregateFunctionPtr res(
                 creator_with_type_list_base<1, TYPE_TINYINT, TYPE_SMALLINT, TYPE_INT, TYPE_BIGINT,
-                                            TYPE_LARGEINT>::create<AggFunctionOrthBitmapFunc,
+                                            TYPE_LARGEINT>::create<AggOrthBitmapFuncWrap,
                                                                    Impl>(argument_types,
                                                                          result_is_nullable, attr));
         if (res) {

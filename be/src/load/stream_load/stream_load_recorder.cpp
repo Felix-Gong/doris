@@ -81,7 +81,7 @@ Status StreamLoadRecorder::init() {
 
 Status StreamLoadRecorder::put(const std::string& key, const std::string& value, bool use_meta_cf) {
     rocksdb::ColumnFamilyHandle* handle =
-            _handles[use_meta_cf ? META_COLUMN_FAMILY_INDEX : DEFAULT_COLUMN_FAMILY_INDEX];
+            _handles[use_meta_cf ? SL_META_CF_INDEX : SL_DEFAULT_CF_INDEX];
     rocksdb::WriteOptions write_options;
     write_options.sync = false;
     rocksdb::Status s = _db->Put(write_options, handle, rocksdb::Slice(key), rocksdb::Slice(value));
@@ -98,7 +98,7 @@ Status StreamLoadRecorder::put(const std::string& key, const std::string& value,
     if ((UnixMillis() - _last_compaction_time) / 1000 >
         config::clean_stream_load_record_interval_secs) {
         rocksdb::CompactRangeOptions options;
-        s = _db->CompactRange(options, _handles[DEFAULT_COLUMN_FAMILY_INDEX], nullptr, nullptr);
+        s = _db->CompactRange(options, _handles[SL_DEFAULT_CF_INDEX], nullptr, nullptr);
         if (s.ok()) {
             _last_compaction_time = UnixMillis();
         }
@@ -109,7 +109,7 @@ Status StreamLoadRecorder::put(const std::string& key, const std::string& value,
 
 Status StreamLoadRecorder::get(const std::string& key, std::string* value, bool use_meta_cf) {
     rocksdb::ColumnFamilyHandle* handle =
-            _handles[use_meta_cf ? META_COLUMN_FAMILY_INDEX : DEFAULT_COLUMN_FAMILY_INDEX];
+            _handles[use_meta_cf ? SL_META_CF_INDEX : SL_DEFAULT_CF_INDEX];
     rocksdb::ReadOptions read_options;
     rocksdb::Status s = _db->Get(read_options, handle, rocksdb::Slice(key), value);
     if (s.IsNotFound()) {
@@ -125,7 +125,7 @@ Status StreamLoadRecorder::get(const std::string& key, std::string* value, bool 
 
 Status StreamLoadRecorder::get_batch(const std::string& start, int batch_size,
                                      std::map<std::string, std::string>* stream_load_records) {
-    rocksdb::ColumnFamilyHandle* handle = _handles[DEFAULT_COLUMN_FAMILY_INDEX];
+    rocksdb::ColumnFamilyHandle* handle = _handles[SL_DEFAULT_CF_INDEX];
     std::unique_ptr<rocksdb::Iterator> it(_db->NewIterator(rocksdb::ReadOptions(), handle));
     if (start == "-1") {
         it->SeekToFirst();
