@@ -94,6 +94,7 @@ set(SNAPPY_INCLUDE_DIR "${DORIS_INCLUDE_DIR}" CACHE PATH "Snappy include directo
 # ============================================================================
 set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE BOOL "Build with -fPIC")
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lstdc++ -lm -Wno-unused-parameter" CACHE STRING "C++ compiler flags")
 
 # Symbol visibility control to prevent conflicts with Doris
 # paimon-cpp builds Arrow/ORC/etc with hidden symbols to avoid conflicts

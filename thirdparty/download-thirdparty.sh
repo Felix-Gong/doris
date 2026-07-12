@@ -431,26 +431,30 @@ fi
 # arrow patch is used to get the raw orc reader for filter prune.
 if [[ " ${TP_ARCHIVES[*]} " =~ " ARROW " ]]; then
     if [[ "${ARROW_SOURCE}" == "arrow-apache-arrow-13.0.0" ]]; then
-        cd "${TP_SOURCE_DIR}/${ARROW_SOURCE}"
-        if [[ ! -f "${PATCHED_MARK}" ]]; then
-            patch -p1 <"${TP_PATCH_DIR}/apache-arrow-13.0.0.patch"
-            touch "${PATCHED_MARK}"
+        if [[ -d "${TP_SOURCE_DIR}/${ARROW_SOURCE}" ]]; then
+            cd "${TP_SOURCE_DIR}/${ARROW_SOURCE}"
+            if [[ ! -f "${PATCHED_MARK}" ]]; then
+                patch -p1 <"${TP_PATCH_DIR}/apache-arrow-13.0.0.patch"
+                touch "${PATCHED_MARK}"
+            fi
+            cd -
         fi
-        cd -
     fi
     if [[ "${ARROW_SOURCE}" == "arrow-apache-arrow-17.0.0" ]]; then
-        cd "${TP_SOURCE_DIR}/${ARROW_SOURCE}"
-        if [[ ! -f "${PATCHED_MARK}" ]]; then
-            # Paimon-cpp parquet patches: row-group-aware batch reader, max_row_group_size,
-            # GetBufferedSize(), int96 NANO guard, and Thrift_VERSION empty fix.
-            patch -p1 <"${TP_PATCH_DIR}/apache-arrow-17.0.0-paimon.patch"
+        if [[ -d "${TP_SOURCE_DIR}/${ARROW_SOURCE}" ]]; then
+            cd "${TP_SOURCE_DIR}/${ARROW_SOURCE}"
+            if [[ ! -f "${PATCHED_MARK}" ]]; then
+                # Paimon-cpp parquet patches: row-group-aware batch reader, max_row_group_size,
+                # GetBufferedSize(), int96 NANO guard, and Thrift_VERSION empty fix.
+                patch -p1 <"${TP_PATCH_DIR}/apache-arrow-17.0.0-paimon.patch"
 
-            # apache-arrow-17.0.0-force-write-int96-timestamps.patch : 
-            # Introducing the parameter that forces writing int96 timestampes for compatibility with Paimon cpp. 
-            patch -p1 <"${TP_PATCH_DIR}/apache-arrow-17.0.0-force-write-int96-timestamps.patch"
-            touch "${PATCHED_MARK}"
+                # apache-arrow-17.0.0-force-write-int96-timestamps.patch : 
+                # Introducing the parameter that forces writing int96 timestampes for compatibility with Paimon cpp. 
+                patch -p1 <"${TP_PATCH_DIR}/apache-arrow-17.0.0-force-write-int96-timestamps.patch"
+                touch "${PATCHED_MARK}"
+            fi
+            cd -
         fi
-        cd -
     fi
     echo "Finished patching ${ARROW_SOURCE}"
 fi

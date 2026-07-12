@@ -137,7 +137,7 @@ fi
 if [[ "${DORIS_TOOLCHAIN}" == "gcc" ]]; then
     # set GCC HOME
     if [[ -z "${DORIS_GCC_HOME}" ]]; then
-        DORIS_GCC_HOME="$(dirname "$(command -v gcc)")"/..
+        DORIS_GCC_HOME="$(dirname "$(readlink -f "$(command -v gcc)")")"/..
         export DORIS_GCC_HOME
     fi
 
@@ -150,7 +150,7 @@ if [[ "${DORIS_TOOLCHAIN}" == "gcc" ]]; then
 elif [[ "${DORIS_TOOLCHAIN}" == "clang" ]]; then
     # set CLANG HOME
     if [[ -z "${DORIS_CLANG_HOME}" ]]; then
-        DORIS_CLANG_HOME="$(dirname "$(command -v clang)")"/..
+        DORIS_CLANG_HOME="$(dirname "$(readlink -f "$(command -v clang)")")"/..
         export DORIS_CLANG_HOME
     fi
 
@@ -181,6 +181,10 @@ elif [[ "${DORIS_TOOLCHAIN}" == "clang" ]]; then
     fi
     export LLVM_PROFDATA
 
+# Workaround for openEuler RISC-V: clang++ does not automatically link -lstdc++
+# Add -lstdc++ and -lm to LDFLAGS when using clang toolchain
+export LDFLAGS="${LDFLAGS} -lstdc++ -lm"
+
     if [[ -z "${ENABLE_PCH}" ]]; then
         ENABLE_PCH='ON'
     fi
@@ -203,7 +207,7 @@ if [[ -z "${DORIS_BIN_UTILS}" ]]; then
 fi
 
 if [[ -z "${DORIS_GCC_HOME}" ]]; then
-    DORIS_GCC_HOME="$(dirname "$(command -v gcc)")/.."
+    DORIS_GCC_HOME="$(dirname "$(readlink -f "$(command -v gcc)")")/.."
     export DORIS_GCC_HOME
 fi
 
