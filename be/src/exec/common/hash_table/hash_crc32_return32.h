@@ -31,6 +31,7 @@ static constexpr uint32_t CRC32_HASH_SEED = 0xFFFFFFFF;
 
 // Type-dispatched CRC32 computation primitives.
 // Each overload uses the narrowest intrinsic that matches the input width.
+#if defined(__SSE4_2__) || defined(__aarch64__)
 inline uint32_t crc32_compute(uint32_t crc, uint8_t v) {
     return _mm_crc32_u8(crc, v);
 }
@@ -43,6 +44,21 @@ inline uint32_t crc32_compute(uint32_t crc, uint32_t v) {
 inline uint32_t crc32_compute(uint32_t crc, uint64_t v) {
     return static_cast<uint32_t>(_mm_crc32_u64(crc, v));
 }
+#else
+// Software fallback: use int_hash64 on platforms without SSE 4.2 / CRC32.
+inline uint32_t crc32_compute(uint32_t crc, uint8_t v) {
+    return static_cast<uint32_t>(int_hash64(crc ^ v));
+}
+inline uint32_t crc32_compute(uint32_t crc, uint16_t v) {
+    return static_cast<uint32_t>(int_hash64(crc ^ v));
+}
+inline uint32_t crc32_compute(uint32_t crc, uint32_t v) {
+    return static_cast<uint32_t>(int_hash64(crc ^ v));
+}
+inline uint32_t crc32_compute(uint32_t crc, uint64_t v) {
+    return static_cast<uint32_t>(int_hash64(crc ^ v));
+}
+#endif
 
 template <typename T>
 struct HashCRC32Return32;

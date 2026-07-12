@@ -124,6 +124,7 @@ public:
 
     template <typename T>
     static uint32_t crc32c_fixed(const T& value, uint32_t hash) {
+#if defined(__SSE4_2__) || defined(__aarch64__)
         if constexpr (sizeof(T) == 1) {
             return _mm_crc32_u8(hash, *reinterpret_cast<const uint8_t*>(&value));
         } else if constexpr (sizeof(T) == 2) {
@@ -135,6 +136,10 @@ public:
         } else {
             return crc32c_extend(hash, (const uint8_t*)&value, sizeof(T));
         }
+#else
+        // On non-SSE platforms (e.g., RISC-V), use crc32c library
+        return crc32c_extend(hash, (const uint8_t*)&value, sizeof(T));
+#endif
     }
 
     static uint32_t crc32c_null(uint32_t hash) {
@@ -158,6 +163,7 @@ public:
         if (!CpuInfo::is_supported(CpuInfo::SSE4_2)) {
             return zlib_crc_hash(data, bytes, hash);
         }
+#if defined(__SSE4_2__) || defined(__aarch64__)
         uint32_t words = bytes / sizeof(uint32_t);
         bytes = bytes % sizeof(uint32_t);
 
@@ -174,7 +180,9 @@ public:
             hash = _mm_crc32_u8(hash, *s);
             ++s;
         }
-
+#else
+        hash = crc32c::Crc32c(reinterpret_cast<const uint8_t*>(data), static_cast<size_t>(bytes));
+#endif
         // The lower half of the CRC hash has has poor uniformity, so swap the halves
         // for anyone who only uses the first several bits of the hash.
         hash = (hash << 16) | (hash >> 16);
@@ -182,6 +190,7 @@ public:
     }
 
     static uint64_t crc_hash64(const void* data, uint32_t bytes, uint64_t hash) {
+#if defined(__SSE4_2__) || defined(__aarch64__)
         uint32_t words = bytes / sizeof(uint32_t);
         bytes = bytes % sizeof(uint32_t);
 
@@ -211,6 +220,10 @@ public:
         converter.u32[1] = h2;
 
         return converter.u64;
+#else
+        uint32_t crc = crc32c::Crc32c(reinterpret_cast<const uint8_t*>(data), static_cast<size_t>(bytes));
+        return (uint64_t)crc | ((uint64_t)crc << 32);
+#endif
     }
 
     // refer to https://github.com/apache/commons-codec/blob/master/src/main/java/org/apache/commons/codec/digest/MurmurHash3.java

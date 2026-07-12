@@ -150,12 +150,21 @@ void BlockBloomFilter::bucket_insert(const uint32_t bucket_idx, const uint32_t h
         new_bucket[i] = (kRehash[i] * hash) >> ((1 << kLogBucketWordBits) - kLogBucketWordBits);
         new_bucket[i] = 1U << new_bucket[i];
     }
+#if defined(__SSE4_2__)
     for (int i = 0; i < 2; ++i) {
         __m128i new_bucket_sse = _mm_load_si128(reinterpret_cast<__m128i*>(new_bucket + 4 * i));
         __m128i* existing_bucket =
                 reinterpret_cast<__m128i*>(&DCHECK_NOTNULL(_directory)[bucket_idx][4 * i]);
         *existing_bucket = _mm_or_si128(*existing_bucket, new_bucket_sse);
     }
+#else
+    for (int i = 0; i < 2; ++i) {
+        uint32_t* existing_bucket = &DCHECK_NOTNULL(_directory)[bucket_idx][4 * i];
+        for (int j = 0; j < 4; ++j) {
+            existing_bucket[j] |= new_bucket[4 * i + j];
+        }
+    }
+#endif
 }
 
 bool BlockBloomFilter::bucket_find(const uint32_t bucket_idx, const uint32_t hash) const noexcept {

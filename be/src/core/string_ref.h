@@ -38,6 +38,7 @@
 #include "util/slice.h"
 #include "util/sse_util.hpp"
 #include "util/unaligned.h"
+#include <crc32c/crc32c.h>
 
 namespace doris {
 
@@ -309,7 +310,7 @@ using StringRefs = std::vector<StringRef>;
 /// Parts are taken from CityHash.
 
 inline doris::UInt64 hash_len16(doris::UInt64 u, doris::UInt64 v) {
-    return util_hash::HashLen16(u, v);
+    return ::doris::util_hash::HashLen16(u, v);
 }
 
 inline doris::UInt64 shift_mix(doris::UInt64 val) {
@@ -378,13 +379,28 @@ struct StringRefHash : CRC32Hash {};
 
 #else
 
+// Software fallback crc32c hash (no SSE 4.2 needed)
+inline size_t crc32_hash(const char* pos, size_t size) {
+    if (size == 0) return 0;
+    // Use software CRC32C via the crc32c library for all sizes
+    return static_cast<size_t>(crc32c::Crc32c(reinterpret_cast<const uint8_t*>(pos), size));
+}
+
+inline size_t crc32_hash(const std::string str) {
+    return crc32_hash(str.data(), str.size());
+}
+
 struct CRC32Hash {
-    size_t operator()(StringRef /* x */) const {
-        throw std::logic_error {"Not implemented CRC32Hash without SSE"};
-    }
+    size_t operator()(const StringRef& x) const { return crc32_hash(x.data, x.size); }
 };
 
-struct StringRefHash : StringRefHash64 {};
+struct StringRefHash : CRC32Hash {};
+
+struct StringRefHash64 {
+    size_t operator()(const StringRef& x) const {
+        return HashUtil::hash(x.data, (uint32_t)x.size, 0);
+    }
+};
 
 #endif // end of hash functions
 

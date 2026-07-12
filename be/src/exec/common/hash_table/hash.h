@@ -27,6 +27,25 @@
 #include "core/types.h"
 #include "core/uint128.h"
 #include "parallel_hashmap/phmap_utils.h"
+// REMOVED_DUPLICATE_Hash128to64 - software fallback for non-SSE platforms
+namespace doris {
+inline uint64_t Hash128to64(const uint64_t low, const uint64_t high) {
+    const uint64_t kMul = 0x9ddfea08eb382d69ULL;
+    uint64_t a = (low ^ high) * kMul;
+    a ^= (a >> 47);
+    uint64_t b = (high ^ a) * kMul;
+    b ^= (b >> 47);
+    b *= kMul;
+    return b;
+}
+inline uint64_t Hash128to64(const uint64_t x[2]) {
+    return doris::Hash128to64(x[0], x[1]);
+}
+inline uint64_t Hash128to64(::std::pair<uint64_t, uint64_t> p) {
+    return Hash128to64(p.first, p.second);
+}
+} // namespace doris
+
 
 // Here is an empirical value.
 static constexpr size_t HASH_MAP_PREFETCH_DIST = 16;
@@ -217,7 +236,7 @@ struct HashCRC32<doris::UInt256> {
         crc = _mm_crc32_u64(crc, x.items[3]);
         return crc;
 #else
-        return Hash128to64({Hash128to64({x.a, x.b}), Hash128to64({x.c, x.d})});
+        return doris::Hash128to64({doris::Hash128to64({x.items[0], x.items[1]}), doris::Hash128to64({x.items[2], x.items[3]})});
 #endif
     }
 };
@@ -233,8 +252,8 @@ struct HashCRC32<wide::Int256> {
         crc = _mm_crc32_u64(crc, x.items[3]);
         return crc;
 #else
-        return Hash128to64(
-                {Hash128to64({x.items[0], x.items[1]}), Hash128to64({x.items[2], x.items[3]})});
+        return doris::Hash128to64(
+                {doris::Hash128to64({x.items[0], x.items[1]}), doris::Hash128to64({x.items[2], x.items[3]})});
 #endif
     }
 };
@@ -281,47 +300,72 @@ struct HashCRC32<doris::DecimalV2Value> {
     }
 };
 
+
 #include "common/compile_check_avoid_begin.h"
 
 template <>
 struct HashCRC32<doris::UInt72> {
     size_t operator()(const doris::UInt72& x) const {
+#if defined(__SSE4_2__) || defined(__aarch64__)
         doris::UInt64 crc = -1ULL;
-        crc = _mm_crc32_u8(crc, x.a);
+        crc = _mm_crc32_u8(crc, x.b);
         crc = _mm_crc32_u64(crc, x.b);
         return crc;
+#else
+        doris::UInt64 crc = -1ULL;
+        crc = doris::Hash128to64(crc, x.b);
+        return crc;
+#endif
     }
 };
 
 template <>
 struct HashCRC32<doris::UInt96> {
     size_t operator()(const doris::UInt96& x) const {
+#if defined(__SSE4_2__) || defined(__aarch64__)
         doris::UInt64 crc = -1ULL;
         crc = _mm_crc32_u32(crc, x.a);
         crc = _mm_crc32_u64(crc, x.b);
         return crc;
+#else
+        doris::UInt64 crc = -1ULL;
+        crc = doris::Hash128to64(crc, x.b);
+        return crc;
+#endif
     }
 };
 
 template <>
 struct HashCRC32<doris::UInt104> {
     size_t operator()(const doris::UInt104& x) const {
+#if defined(__SSE4_2__) || defined(__aarch64__)
         doris::UInt64 crc = -1ULL;
         crc = _mm_crc32_u8(crc, x.a);
         crc = _mm_crc32_u32(crc, x.b);
         crc = _mm_crc32_u64(crc, x.c);
         return crc;
+#else
+        doris::UInt64 crc = -1ULL;
+        crc = doris::Hash128to64(crc, x.c);
+        return crc;
+#endif
     }
 };
 
 template <>
 struct HashCRC32<doris::UInt136> {
     size_t operator()(const doris::UInt136& x) const {
+#if defined(__SSE4_2__) || defined(__aarch64__)
         doris::UInt64 crc = -1ULL;
         crc = _mm_crc32_u8(crc, x.a);
         crc = _mm_crc32_u64(crc, x.b);
         crc = _mm_crc32_u64(crc, x.c);
         return crc;
+#else
+        doris::UInt64 crc = -1ULL;
+        crc = doris::Hash128to64(crc, x.c);
+        return crc;
+#endif
     }
 };
 
