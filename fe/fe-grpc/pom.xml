@@ -60,6 +60,59 @@ under the License.
             </properties>
         </profile>
         <profile>
+            <!-- RISC-V: grpc-java ships a linux-riscv64 classifier; protoc is
+                 provided by the thirdparty build. The exec-maven plugin below
+                 invokes a persistent copy installed under thirdparty (unlike
+                 /tmp, which is wiped on reboot and not reproducible). -->
+            <id>protoc_riscv</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <arch>riscv64</arch>
+                </os>
+            </activation>
+            <properties>
+                <grpc.java.plugin>${doris.thirdparty}/installed/bin/protoc-gen-grpc-java</grpc.java.plugin>
+            </properties>
+        </profile>
+        <profile>
+            <id>protoc_riscv_build</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <arch>riscv64</arch>
+                </os>
+            </activation>
+            <build>
+                <plugins>
+<plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.0.0</version>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${doris.home}/thirdparty/installed/bin/protoc</executable>
+                            <arguments>
+                                <argument>--plugin=protoc-gen-grpc-java=${grpc.java.plugin}</argument>
+                                <argument>--grpc-java_out=${project.build.directory}/generated-sources</argument>
+                                <argument>-I${doris.home}/gensrc/proto</argument>
+                                <argument>${doris.home}/gensrc/proto/internal_service.proto</argument>
+                                <argument>${doris.home}/gensrc/proto/function_service.proto</argument>
+                                <argument>${doris.home}/gensrc/proto/cloud.proto</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
             <id>release</id>
             <build>
                 <plugins>
@@ -139,30 +192,7 @@ under the License.
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.0.0</version>
-                <executions>
-                    <execution>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${doris.home}/thirdparty/installed/bin/protoc</executable>
-                            <arguments>
-                                <argument>--plugin=protoc-gen-grpc-java=/tmp/protoc-gen-grpc-java.py</argument>
-                                <argument>--grpc-java_out=${project.build.directory}/generated-sources</argument>
-                                <argument>-I${doris.home}/gensrc/proto</argument>
-                                <argument>${doris.home}/gensrc/proto/internal_service.proto</argument>
-                                <argument>${doris.home}/gensrc/proto/function_service.proto</argument>
-                                <argument>${doris.home}/gensrc/proto/cloud.proto</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
+            
         </plugins>
     </build>
 </project>
