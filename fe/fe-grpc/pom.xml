@@ -152,7 +152,7 @@ under the License.
                         <configuration>
                             <executable>${doris.home}/thirdparty/installed/bin/protoc</executable>
                             <arguments>
-                                <argument>--plugin=protoc-gen-grpc-java=/tmp/protoc-gen-grpc-java.py</argument>
+                                <argument>--plugin=protoc-gen-grpc-java=/tmp/protoc-gen-grpc-java</argument>
                                 <argument>--grpc-java_out=${project.build.directory}/generated-sources</argument>
                                 <argument>-I${doris.home}/gensrc/proto</argument>
                                 <argument>${doris.home}/gensrc/proto/internal_service.proto</argument>
