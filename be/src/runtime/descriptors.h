@@ -469,6 +469,8 @@ public:
             _num_slots += (*it)->slots().size();
         }
     }
+    RowDescriptor& operator=(const RowDescriptor&) = default;
+
 
     RowDescriptor(TupleDescriptor* tuple_desc);
 

@@ -364,6 +364,7 @@ add_compile_options(-g
                     -Wall
                     -Wextra
                     -Werror
+                    -Wno-misleading-indentation
                     -Wundef
                     -pthread
                     -fstrict-aliasing
@@ -822,8 +823,8 @@ if (GLIBC_COMPATIBILITY)
 endif()
 
 if (NOT OS_MACOSX)
-    set(CMAKE_CXX_STANDARD_LIBRARIES "-lrt -l:libbfd.a -liberty -lc -lm -ldl -pthread")
-    set(CMAKE_C_STANDARD_LIBRARIES "-lrt -l:libbfd.a -liberty -lc -lm -ldl -pthread")
+    set(CMAKE_CXX_STANDARD_LIBRARIES "-lrt -l:libbfd.a -lsframe -liberty -lc -lm -ldl -pthread -lsystemd -lgfortran")
+    set(CMAKE_C_STANDARD_LIBRARIES "-lrt -l:libbfd.a -lsframe -liberty -lc -lm -ldl -pthread -lsystemd -lgfortran")
 else()
     set(DORIS_LINK_LIBS ${DORIS_LINK_LIBS}
         "-framework CoreFoundation"
