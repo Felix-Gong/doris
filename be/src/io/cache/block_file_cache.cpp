@@ -683,6 +683,7 @@ FileBlockCell* BlockFileCache::get_cell(const UInt128Wrapper& hash, size_t offse
     return &cell_it->second;
 }
 
+template FileBlockCell* BlockFileCache::get_cell(const UInt128Wrapper& hash, size_t offset, std::lock_guard<std::mutex>& cache_lock);
 bool BlockFileCache::need_to_move(FileCacheType cell_type, FileCacheType query_type) const {
     return query_type != FileCacheType::DISPOSABLE && cell_type != FileCacheType::DISPOSABLE;
 }
