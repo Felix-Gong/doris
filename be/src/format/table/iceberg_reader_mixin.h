@@ -115,8 +115,12 @@ public:
         _partition_data_json = partition_data_json;
     }
 
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
     enum { DATA, POSITION_DELETE, EQUALITY_DELETE, DELETION_VECTOR };
     enum Fileformat { NONE, PARQUET, ORC, AVRO };
+#pragma GCC diagnostic pop
 
     virtual void set_delete_rows() = 0;
     virtual void set_deletion_vector() = 0;

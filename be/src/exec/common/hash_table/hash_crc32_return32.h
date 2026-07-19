@@ -14,21 +14,16 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-
 #pragma once
-
 #include "core/string_ref.h"
 #include "core/types.h"
 #include "core/uint128.h"
-
+#include "hash.h"
 // CRC32 hash functions that return uint32_t instead of size_t.
 // Uses type-appropriate _mm_crc32_u{8,16,32,64} intrinsics to avoid
 // unnecessary widening of inputs smaller than 64 bits.
-
 namespace doris {
-
 static constexpr uint32_t CRC32_HASH_SEED = 0xFFFFFFFF;
-
 // Type-dispatched CRC32 computation primitives.
 // Each overload uses the narrowest intrinsic that matches the input width.
 inline uint32_t crc32_compute(uint32_t crc, uint8_t v) {
@@ -43,34 +38,26 @@ inline uint32_t crc32_compute(uint32_t crc, uint32_t v) {
 inline uint32_t crc32_compute(uint32_t crc, uint64_t v) {
     return static_cast<uint32_t>(_mm_crc32_u64(crc, v));
 }
-
 template <typename T>
 struct HashCRC32Return32;
-
 // --- Arithmetic types: use the narrowest intrinsic ---
-
 template <>
 struct HashCRC32Return32<UInt8> {
     uint32_t operator()(UInt8 key) const { return crc32_compute(CRC32_HASH_SEED, key); }
 };
-
 template <>
 struct HashCRC32Return32<UInt16> {
     uint32_t operator()(UInt16 key) const { return crc32_compute(CRC32_HASH_SEED, key); }
 };
-
 template <>
 struct HashCRC32Return32<UInt32> {
     uint32_t operator()(UInt32 key) const { return crc32_compute(CRC32_HASH_SEED, key); }
 };
-
 template <>
 struct HashCRC32Return32<UInt64> {
     uint32_t operator()(UInt64 key) const { return crc32_compute(CRC32_HASH_SEED, key); }
 };
-
 // --- 128-bit types ---
-
 template <>
 struct HashCRC32Return32<UInt128> {
     uint32_t operator()(const UInt128& x) const {
@@ -80,9 +67,7 @@ struct HashCRC32Return32<UInt128> {
         return crc;
     }
 };
-
 // --- 256-bit types ---
-
 template <>
 struct HashCRC32Return32<UInt256> {
     uint32_t operator()(const UInt256& x) const {
@@ -94,9 +79,7 @@ struct HashCRC32Return32<UInt256> {
         return crc;
     }
 };
-
 // --- Packed compound types (used by FixedKeyHashTableContext) ---
-
 template <>
 struct HashCRC32Return32<UInt72> {
     uint32_t operator()(const UInt72& x) const {
@@ -106,7 +89,6 @@ struct HashCRC32Return32<UInt72> {
         return crc;
     }
 };
-
 template <>
 struct HashCRC32Return32<UInt96> {
     uint32_t operator()(const UInt96& x) const {
@@ -116,7 +98,6 @@ struct HashCRC32Return32<UInt96> {
         return crc;
     }
 };
-
 template <>
 struct HashCRC32Return32<UInt104> {
     uint32_t operator()(const UInt104& x) const {
@@ -127,7 +108,6 @@ struct HashCRC32Return32<UInt104> {
         return crc;
     }
 };
-
 template <>
 struct HashCRC32Return32<UInt136> {
     uint32_t operator()(const UInt136& x) const {
@@ -138,14 +118,11 @@ struct HashCRC32Return32<UInt136> {
         return crc;
     }
 };
-
 // --- StringRef: truncate existing crc32_hash() result ---
-
 template <>
 struct HashCRC32Return32<StringRef> {
     uint32_t operator()(const StringRef& x) const {
         return static_cast<uint32_t>(crc32_hash(x.data, x.size));
     }
 };
-
 } // namespace doris

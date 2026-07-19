@@ -37,6 +37,13 @@
 
 namespace doris {
 
+struct LinearHistogramHash {
+    size_t operator()(int32_t key) const noexcept {
+        return static_cast<size_t>(key);
+    }
+};
+
+
 template <PrimitiveType T>
 struct AggregateFunctionLinearHistogramData {
     // bucket key limits
@@ -50,7 +57,7 @@ private:
     double lower; // not used yet
     double upper; // not used yet
     std::unordered_map<int32_t, size_t,
-                       decltype([](int32_t key) { return static_cast<size_t>(key); })>
+                       LinearHistogramHash>
             buckets;
 
 public:
