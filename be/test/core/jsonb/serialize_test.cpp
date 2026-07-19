@@ -101,7 +101,7 @@ namespace doris {
 //     <size_i> bytes : raw JSONB bytes for that row
 //
 // Regenerate (only after an intentional encoding change):
-//   DORIS_REGEN_JSONB_GOLDEN=1 ... ./doris_be_test \
+//  DORIS_REGEN_JSONB_GOLDEN=1 ... ./doris_be_test
 //       --gtest_filter='BlockSerializeTest.GenerateAllRowStoreSupportedTypesGolden'
 //   then `git add` the regenerated file.
 inline static const std::string kBlockToJsonbGoldenRel =
@@ -817,7 +817,7 @@ TEST(BlockSerializeTest, Bigstr) {
     col->insert_data(bigdata.data(), bigdata.length());
     try {
         s->get_uncompressed_serialized_bytes(*col, BeExecVersionManager::get_newest_version());
-    } catch (std::exception e) {
+    } catch (std::exception& e) {
         return;
     }
     assert(false);
