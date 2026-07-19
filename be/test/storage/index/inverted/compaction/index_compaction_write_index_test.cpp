@@ -24,9 +24,7 @@
 
 #include "common/logging.h"
 #include "io/fs/local_file_system.h"
-
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow-field"
 #include <CLucene.h> // IWYU pragma: keep
 #include <CLucene/util/stringUtil.h>
 

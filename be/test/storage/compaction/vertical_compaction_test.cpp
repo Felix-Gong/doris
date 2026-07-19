@@ -1789,7 +1789,7 @@ TEST_F(VerticalCompactionTest, TestFooterRawDataBytesAccuracy) {
     // Collect raw_data_bytes per column from footer
     std::unordered_map<int32_t, uint64_t> raw_bytes_by_uid;
     auto st = segments[0]->traverse_column_meta_pbs([&](const segment_v2::ColumnMetaPB& meta) {
-        if (meta.unique_id() >= 0 && meta.has_raw_data_bytes()) {
+        if (meta.has_raw_data_bytes()) {
             raw_bytes_by_uid[meta.unique_id()] = meta.raw_data_bytes();
         }
     });
@@ -1886,7 +1886,7 @@ TEST_F(VerticalCompactionTest, TestFooterRawDataBytesNullableSparse) {
 
     std::unordered_map<int32_t, uint64_t> raw_bytes_by_uid;
     auto st = segments[0]->traverse_column_meta_pbs([&](const segment_v2::ColumnMetaPB& meta) {
-        if (meta.unique_id() >= 0 && meta.has_raw_data_bytes()) {
+        if (meta.has_raw_data_bytes()) {
             raw_bytes_by_uid[meta.unique_id()] = meta.raw_data_bytes();
         }
     });
