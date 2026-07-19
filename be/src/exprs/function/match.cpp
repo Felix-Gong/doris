@@ -167,7 +167,7 @@ Status FunctionMatchBase::execute_impl(FunctionContext* context, Block& block,
     return Status::OK();
 }
 
-inline doris::segment_v2::InvertedIndexQueryType FunctionMatchBase::get_query_type_from_fn_name()
+doris::segment_v2::InvertedIndexQueryType FunctionMatchBase::get_query_type_from_fn_name()
         const {
     std::string fn_name = get_name();
     if (fn_name == MATCH_ANY_FUNCTION) {
@@ -224,7 +224,7 @@ std::vector<TermInfo> FunctionMatchBase::analyse_query_str_token(
     return query_tokens;
 }
 
-inline std::vector<TermInfo> FunctionMatchBase::analyse_data_token(
+std::vector<TermInfo> FunctionMatchBase::analyse_data_token(
         const std::string& column_name, const InvertedIndexAnalyzerCtx* analyzer_ctx,
         const ColumnString* string_col, int32_t current_block_row_idx,
         const ColumnArray::Offsets64* array_offsets, int32_t& current_src_array_offset) const {

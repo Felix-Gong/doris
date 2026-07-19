@@ -453,6 +453,8 @@ struct Dispatcher {
                     is_float_or_double(T) || T == TYPE_TIMEV2,
                     FloatRoundingImpl<T, rounding_mode, scale_mode, tie_breaking_mode>,
                     IntegerRoundingImpl<T, rounding_mode, scale_mode, tie_breaking_mode>>>;
+    template <RoundingMode RM>
+    static constexpr bool always_false_rm = false;
 
     // scale_arg: scale for function computation
     // result_scale: scale for result decimal, this scale is got from planner
@@ -554,7 +556,7 @@ struct Dispatcher {
 
             return col_res;
         } else {
-            static_assert(false);
+            static_assert(always_false_rm<rounding_mode>);
         }
     }
 
@@ -668,7 +670,7 @@ struct Dispatcher {
 
             return col_res;
         } else {
-            static_assert(false);
+            static_assert(always_false_rm<rounding_mode>);
         }
     }
 
@@ -789,7 +791,7 @@ struct Dispatcher {
 
             return col_res;
         } else {
-            static_assert(false);
+            static_assert(always_false_rm<rounding_mode>);
         }
     }
 };

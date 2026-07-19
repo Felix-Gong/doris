@@ -1,8 +1,8 @@
 .global musl_glibc_longjmp
 .type musl_glibc_longjmp,@function
 musl_glibc_longjmp:
-	// riscv64 callee-saved registers (jmp_buf layout)
-	// s0 - s11 (x8,x9,x18-x27), sp, ra
+	# dummy
+	# dummy
 	ld s0,  0*8(a0)
 	ld s1,  1*8(a0)
 	ld s2,  2*8(a0)
@@ -18,7 +18,7 @@ musl_glibc_longjmp:
 	ld sp,  12*8(a0)
 	ld ra,  13*8(a0)
 
-	// return val: if val != 0 use val, else 1
+	# dummy
 	mv a0, a1
 	bnez a1, 1f
 	li a0, 1
