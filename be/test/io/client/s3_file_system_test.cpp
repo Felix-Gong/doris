@@ -2471,13 +2471,12 @@ TEST_F(S3FileSystemTest, DynamicUpdateRateLimiterConfig) {
 
     // Legacy configs are only effective while the per-core config is unset.
     ASSERT_TRUE(config::set_config("s3_get_requests_per_second_per_core", "-1").ok());
-    auto [success1, msg7] = config::set_config(
+    Status st7 = config::set_config(
             "s3_get_bucket_tokens", std::to_string(new_s3_get_bucket_tokens_val), false, false);
-    ASSERT_EQ(success1, 0) << "Failed to set s3_get_bucket_tokens: " << msg7;
-    auto [success2, msg8] =
-            config::set_config("s3_get_token_per_second",
+    ASSERT_TRUE(st7.ok()) << "Failed to set s3_get_bucket_tokens: " << st7;
+    Status st8 = config::set_config("s3_get_token_per_second",
                                std::to_string(new_s3_get_token_per_second_val), false, false);
-    ASSERT_EQ(success2, 0) << "Failed to set s3_get_token_per_second: " << msg8;
+    ASSERT_TRUE(st8.ok()) << "Failed to set s3_get_token_per_second: " << st8;
 
     // Dynamic config changes take effect through the periodic idempotent refresh.
     manager.refresh();

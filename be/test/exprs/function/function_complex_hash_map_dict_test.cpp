@@ -39,7 +39,7 @@ ColumnPtr create_column_with_data(std::vector<typename DataType::FieldType> data
             column->insert_value(data);
         }
     }
-    return std::move(column);
+    return column;
 }
 
 template <typename DataType>

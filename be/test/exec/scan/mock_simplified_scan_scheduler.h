@@ -20,7 +20,7 @@
 #include "exec/scan/scanner_scheduler.h"
 
 namespace doris {
-class MockSimplifiedScanScheduler final : ThreadPoolSimplifiedScanScheduler {
+class MockSimplifiedScanScheduler final : public ThreadPoolSimplifiedScanScheduler {
 public:
     MockSimplifiedScanScheduler(std::shared_ptr<CgroupCpuCtl> cgroup_cpu_ctl)
             : ThreadPoolSimplifiedScanScheduler("ForTest", cgroup_cpu_ctl) {}
