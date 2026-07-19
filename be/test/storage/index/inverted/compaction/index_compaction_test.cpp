@@ -674,7 +674,7 @@ protected:
         auto num_segments_idx = output_rowset_index->num_segments();
         auto num_segments_normal = output_rowset_normal->num_segments();
         for (int idx = 10000; idx < 10037; idx++) {
-            if (num_segments_idx == num_segments_normal == 1) {
+            if ((num_segments_idx == num_segments_normal) == 1) {
                 // check index file terms for single segment
                 const auto& seg_path = output_rowset_index->segment_path(0);
                 EXPECT_TRUE(seg_path.has_value()) << seg_path.error();
