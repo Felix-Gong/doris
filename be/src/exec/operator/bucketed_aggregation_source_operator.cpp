@@ -218,6 +218,7 @@ int BucketedAggLocalState::_merge_bucket(int bucket, int merge_target) {
                     [&](auto& dst_method) -> void {
                         using AggMethodType = std::decay_t<decltype(dst_method)>;
                         auto& dst_data = *dst_method.hash_table;
+                        using DstLookupResult = typename AggMethodType::HashMapType::LookupResult;
 
                         // Merge all finished sink instances (except merge_target itself)
                         // into the merge target's bucket.
@@ -270,9 +271,7 @@ int BucketedAggLocalState::_merge_bucket(int bucket, int merge_target) {
                                                         auto src_mapped = mapped;
                                                         mapped = nullptr;
 
-                                                        typename std::remove_reference_t<
-                                                                decltype(dst_data)>::LookupResult
-                                                                dst_it;
+                                                        DstLookupResult dst_it;
                                                         bool inserted = false;
                                                         hash_table_emplace(dst_data, key, dst_it,
                                                                            inserted);
