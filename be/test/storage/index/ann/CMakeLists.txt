@@ -23,7 +23,7 @@ add_library(vector_search_test STATIC ${VECTOR_SEARCH_TEST_FILES})
 
 # Suppress warnings for this library to avoid compilation failures from third-party dependencies
 target_compile_options(vector_search_test PRIVATE 
-    -Wno-everything             # Suppress all warnings
+    -w             # Suppress all warnings
     -fno-access-control         # Disable access control error
 )
 
