@@ -33,6 +33,8 @@
 
 namespace doris {
 class OlapScanner;
+class QueryCacheRuntime;
+struct QueryCacheInstanceDecision;
 } // namespace doris
 
 namespace doris {
@@ -108,6 +110,10 @@ private:
     bool _storage_no_merge() override;
 
     bool _read_mor_as_dup();
+    // True for MIN_DELTA / DETAIL binlog scans, which read through BlockReader's merge (op
+    // synthesis + BEFORE/AFTER split) and thus must keep predicates above the reader. Returns bool
+    // to avoid leaking the thrift binlog-scan-type enum into this header.
+    bool _is_binlog_merge_scan() const;
     bool _push_down_topn(const RuntimePredicate& predicate) override {
         if (!predicate.target_is_slot(_parent->node_id())) {
             return false;
@@ -218,6 +224,7 @@ private:
     RuntimeProfile::Counter* _lazy_read_timer = nullptr;
     RuntimeProfile::Counter* _lazy_read_seek_timer = nullptr;
     RuntimeProfile::Counter* _lazy_read_seek_counter = nullptr;
+    RuntimeProfile::Counter* _lazy_read_pruned_timer = nullptr;
 
     // total pages read
     // used by segment v2
@@ -338,10 +345,13 @@ private:
     std::vector<TabletWithVersion> _tablets;
     std::vector<TabletReadSource> _read_sources;
 
+    // The per-instance query cache decision shared with the cache source
+    // operator of the same fragment. Null when the query cache is disabled.
+    // HIT: leave _scan_ranges empty so nothing is scanned; INCREMENTAL: scan
+    // only the pre-captured delta read sources in (cached, current] version.
+    std::shared_ptr<QueryCacheInstanceDecision> _query_cache_decision;
+
     std::map<SlotId, VExprContextSPtr> _slot_id_to_virtual_column_expr;
-    std::map<SlotId, size_t> _slot_id_to_index_in_block;
-    // this map is needed for scanner opening.
-    std::map<SlotId, DataTypePtr> _slot_id_to_col_type;
 
     // ---- Runtime-filter partition pruning ----
     // Attaches this per-instance pruner to the shared parse result owned by
@@ -356,7 +366,8 @@ class OlapScanOperatorX final : public ScanOperatorX<OlapScanLocalState> {
 public:
     OlapScanOperatorX(ObjectPool* pool, const TPlanNode& tnode, int operator_id,
                       const DescriptorTbl& descs, int parallel_tasks,
-                      const TQueryCacheParam& cache_param);
+                      const TQueryCacheParam& cache_param,
+                      std::shared_ptr<QueryCacheRuntime> query_cache_runtime = nullptr);
 
     Status prepare(RuntimeState* state) override;
 
@@ -372,6 +383,10 @@ private:
     friend class OlapScanLocalState;
     TOlapScanNode _olap_scan_node;
     TQueryCacheParam _cache_param;
+    // Shared with the cache source operator of the same fragment so both
+    // consume the same per-instance cache decision (see QueryCacheRuntime).
+    // Null when the query cache is disabled.
+    std::shared_ptr<QueryCacheRuntime> _query_cache_runtime;
     TabletSchemaSPtr _tablet_schema;
 };
 
