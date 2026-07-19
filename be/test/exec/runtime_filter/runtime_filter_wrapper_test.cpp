@@ -1181,7 +1181,7 @@ TEST_F(RuntimeFilterWrapperTest, TestErrorPath) {
     try {
         wrapper->check_state(
                 {RuntimeFilterWrapper::State::READY, RuntimeFilterWrapper::State::DISABLED});
-    } catch (std::exception) {
+    } catch (std::exception&) {
         ex = true;
     }
     EXPECT_TRUE(ex);

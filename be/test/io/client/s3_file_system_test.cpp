@@ -2465,13 +2465,12 @@ TEST_F(S3FileSystemTest, DynamicUpdateRateLimiterConfig) {
     int64_t new_s3_get_bucket_tokens_val = 50;
     int64_t new_s3_get_token_per_second_val = 1;
 
-    auto [success1, msg7] = config::set_config(
+    Status st7 = config::set_config(
             "s3_get_bucket_tokens", std::to_string(new_s3_get_bucket_tokens_val), false, false);
-    ASSERT_EQ(success1, 0) << "Failed to set s3_get_bucket_tokens: " << msg7;
-    auto [success2, msg8] =
-            config::set_config("s3_get_token_per_second",
+    ASSERT_TRUE(st7.ok()) << "Failed to set s3_get_bucket_tokens: " << st7;
+    Status st8 = config::set_config("s3_get_token_per_second",
                                std::to_string(new_s3_get_token_per_second_val), false, false);
-    ASSERT_EQ(success2, 0) << "Failed to set s3_get_token_per_second: " << msg8;
+    ASSERT_TRUE(st8.ok()) << "Failed to set s3_get_token_per_second: " << st8;
 
     auto st = create_client();
     ASSERT_TRUE(st.ok());

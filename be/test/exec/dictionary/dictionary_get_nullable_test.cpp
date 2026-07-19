@@ -41,7 +41,7 @@ ColumnPtr create_column(const std::vector<typename DataType::FieldType>& datas) 
             column->insert_value(data);
         }
     }
-    return std::move(column);
+    return column;
 }
 
 TEST(DictionaryGetNullableTest, testHashMapDictionary) {

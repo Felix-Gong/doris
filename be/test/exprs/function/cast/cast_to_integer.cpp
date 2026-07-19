@@ -1867,7 +1867,7 @@ struct FunctionCastToIntTest : public FunctionCastTest {
                 }
             }
         }
-    loop_end:
+    loop_end: __attribute__((unused)) ;
         if constexpr (is_supported_int_type) {
             check_function_for_cast<DataTypeNumber<ToPT>, false>(input_types, data_set, -1, -1,
                                                                  false);

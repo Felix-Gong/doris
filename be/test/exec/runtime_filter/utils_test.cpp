@@ -39,7 +39,7 @@ TEST_F(RuntimeFilterUtilsTest, TestConvertorException) {
     bool exception = false;
     try {
         get_convertor<TestClass>();
-    } catch (std::exception) {
+    } catch (std::exception&) {
         exception = true;
     }
     EXPECT_TRUE(exception);
