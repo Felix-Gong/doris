@@ -90,64 +90,7 @@ class IndexCompactionUtils {
     template <typename T>
     static std::vector<T> read_data(const std::string& file_name);
 
-    template <>
-    std::vector<DataRow> read_data<DataRow>(const std::string& file_name) {
-        std::ifstream file(file_name);
-        EXPECT_TRUE(file.is_open());
 
-        std::string line;
-        std::vector<DataRow> data;
-
-        while (std::getline(file, line)) {
-            std::stringstream ss(line);
-            std::string item;
-            DataRow row;
-            EXPECT_TRUE(std::getline(ss, item, ','));
-            row.key = std::stoi(item);
-            EXPECT_TRUE(std::getline(ss, item, ','));
-            row.word = item;
-            EXPECT_TRUE(std::getline(ss, item, ','));
-            row.url = item;
-            EXPECT_TRUE(std::getline(ss, item, ','));
-            row.num = std::stoi(item);
-            data.emplace_back(std::move(row));
-        }
-
-        file.close();
-        return data;
-    }
-
-    template <>
-    std::vector<WikiDataRow> read_data<WikiDataRow>(const std::string& file_name) {
-        std::ifstream file(file_name);
-        EXPECT_TRUE(file.is_open());
-
-        std::vector<WikiDataRow> data;
-        std::string line;
-
-        while (std::getline(file, line)) {
-            if (line.empty()) {
-                continue;
-            }
-            // catch parse exception and continue
-            try {
-                nlohmann::json j = nlohmann::json::parse(line);
-                WikiDataRow row;
-                row.title = j.value("title", "null");
-                row.content = j.value("content", "null");
-                row.redirect = j.value("redirect", "null");
-                row.space = j.value("space", "null");
-
-                data.emplace_back(std::move(row));
-            } catch (const std::exception& e) {
-                std::cout << "parse json error: " << e.what() << std::endl;
-                continue;
-            }
-        }
-
-        file.close();
-        return data;
-    }
 
     static bool query_bkd(const TabletIndex* index,
                           std::shared_ptr<IndexFileReader>& index_file_reader,
@@ -797,4 +740,67 @@ class IndexCompactionUtils {
     }
 };
 
+} // namespace doris
+
+namespace doris {
+template <>
+std::vector<IndexCompactionUtils::DataRow>
+IndexCompactionUtils::read_data<IndexCompactionUtils::DataRow>(const std::string& file_name) {
+    std::ifstream file(file_name);
+    EXPECT_TRUE(file.is_open());
+
+    std::string line;
+    std::vector<DataRow> data;
+
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        std::string item;
+        DataRow row;
+        EXPECT_TRUE(std::getline(ss, item, ','));
+        row.key = std::stoi(item);
+        EXPECT_TRUE(std::getline(ss, item, ','));
+        row.word = item;
+        EXPECT_TRUE(std::getline(ss, item, ','));
+        row.url = item;
+        EXPECT_TRUE(std::getline(ss, item, ','));
+        row.num = std::stoi(item);
+        data.emplace_back(std::move(row));
+    }
+
+    file.close();
+    return data;
+}
+
+template <>
+std::vector<IndexCompactionUtils::WikiDataRow>
+IndexCompactionUtils::read_data<IndexCompactionUtils::WikiDataRow>(const std::string& file_name) {
+    std::ifstream file(file_name);
+    EXPECT_TRUE(file.is_open());
+
+    std::vector<WikiDataRow> data;
+    std::string line;
+
+    while (std::getline(file, line)) {
+        if (line.empty()) {
+            continue;
+        }
+        // catch parse exception and continue
+        try {
+            nlohmann::json j = nlohmann::json::parse(line);
+            WikiDataRow row;
+            row.title = j.value("title", "null");
+            row.content = j.value("content", "null");
+            row.redirect = j.value("redirect", "null");
+            row.space = j.value("space", "null");
+
+            data.emplace_back(std::move(row));
+        } catch (const std::exception& e) {
+            std::cout << "parse json error: " << e.what() << std::endl;
+            continue;
+        }
+    }
+
+    file.close();
+    return data;
+}
 } // namespace doris

@@ -535,7 +535,7 @@ TEST_F(AnnIndexReaderTest, AnnIndexReaderRangeSearch) {
         auto vectors = doris::vector_search_utils::generate_test_vectors_matrix(num_vectors, dim);
         doris::vector_search_utils::add_vectors_to_indexes_serial_mode(
                 doris_faiss_index.get(), native_faiss_index.get(), vectors);
-        std::ignore = doris_faiss_index->save(this->_ram_dir.get());
+        static_cast<void>(doris_faiss_index->save(this->_ram_dir.get()));
         std::vector<float> query_value = vectors[0];
         const float radius = doris::vector_search_utils::get_radius_from_matrix(query_value.data(),
                                                                                 dim, vectors, 0.3);
@@ -618,7 +618,7 @@ TEST_F(AnnIndexReaderTest, AnnIndexReaderIVFRangeSearch) {
         doris_faiss_index->add(1, vec.data());
     }
 
-    std::ignore = doris_faiss_index->save(this->_ram_dir.get());
+    static_cast<void>(doris_faiss_index->save(this->_ram_dir.get()));
     std::vector<float> query_value = vectors[0];
     const float radius = doris::vector_search_utils::get_radius_from_matrix(query_value.data(), 32,
                                                                             vectors, 0.3F);

@@ -522,14 +522,14 @@ TEST_F(PinyinAnalysisTest, TestMixedPinyinTokenizer) {
             EXPECT_TRUE(token_map.count("h"));
             EXPECT_TRUE(token_map.count("hua"));
 
-            if (token_map.count("l")) EXPECT_EQ(token_map["l"].position, 1);
-            if (token_map.count("liu")) EXPECT_EQ(token_map["liu"].position, 1);
-            if (token_map.count("刘德华")) EXPECT_EQ(token_map["刘德华"].position, 1);
-            if (token_map.count("ldh")) EXPECT_EQ(token_map["ldh"].position, 1);
-            if (token_map.count("d")) EXPECT_EQ(token_map["d"].position, 2);
-            if (token_map.count("de")) EXPECT_EQ(token_map["de"].position, 2);
-            if (token_map.count("h")) EXPECT_EQ(token_map["h"].position, 3);
-            if (token_map.count("hua")) EXPECT_EQ(token_map["hua"].position, 3);
+            if (token_map.count("l")) { EXPECT_EQ(token_map["l"].position, 1); }
+            if (token_map.count("liu")) { EXPECT_EQ(token_map["liu"].position, 1); }
+            if (token_map.count("刘德华")) { EXPECT_EQ(token_map["刘德华"].position, 1); }
+            if (token_map.count("ldh")) { EXPECT_EQ(token_map["ldh"].position, 1); }
+            if (token_map.count("d")) { EXPECT_EQ(token_map["d"].position, 2); }
+            if (token_map.count("de")) { EXPECT_EQ(token_map["de"].position, 2); }
+            if (token_map.count("h")) { EXPECT_EQ(token_map["h"].position, 3); }
+            if (token_map.count("hua")) { EXPECT_EQ(token_map["hua"].position, 3); }
         } else if (test_case == "刘de华") {
             EXPECT_EQ(tokens_detail.size(), 7);
 
@@ -800,14 +800,14 @@ TEST_F(PinyinAnalysisTest, TestPinyinPosition1) {
         token_map[token.term] = token;
     }
 
-    if (token_map.count("l")) EXPECT_EQ(token_map["l"].position, 1);
-    if (token_map.count("liu")) EXPECT_EQ(token_map["liu"].position, 1);
-    if (token_map.count("刘德华")) EXPECT_EQ(token_map["刘德华"].position, 1);
-    if (token_map.count("ldh")) EXPECT_EQ(token_map["ldh"].position, 1);
-    if (token_map.count("d")) EXPECT_EQ(token_map["d"].position, 2);
-    if (token_map.count("de")) EXPECT_EQ(token_map["de"].position, 2);
-    if (token_map.count("h")) EXPECT_EQ(token_map["h"].position, 3);
-    if (token_map.count("hua")) EXPECT_EQ(token_map["hua"].position, 3);
+    if (token_map.count("l")) { EXPECT_EQ(token_map["l"].position, 1); }
+    if (token_map.count("liu")) { EXPECT_EQ(token_map["liu"].position, 1); }
+    if (token_map.count("刘德华")) { EXPECT_EQ(token_map["刘德华"].position, 1); }
+    if (token_map.count("ldh")) { EXPECT_EQ(token_map["ldh"].position, 1); }
+    if (token_map.count("d")) { EXPECT_EQ(token_map["d"].position, 2); }
+    if (token_map.count("de")) { EXPECT_EQ(token_map["de"].position, 2); }
+    if (token_map.count("h")) { EXPECT_EQ(token_map["h"].position, 3); }
+    if (token_map.count("hua")) { EXPECT_EQ(token_map["hua"].position, 3); }
 }
 
 TEST_F(PinyinAnalysisTest, TestPinyinPosition2) {
@@ -831,13 +831,13 @@ TEST_F(PinyinAnalysisTest, TestPinyinPosition2) {
         token_map[token.term] = token;
     }
 
-    if (token_map.count("l")) EXPECT_EQ(token_map["l"].position, 1);
-    if (token_map.count("l德华")) EXPECT_EQ(token_map["l德华"].position, 1);
-    if (token_map.count("ldh")) EXPECT_EQ(token_map["ldh"].position, 1);
-    if (token_map.count("d")) EXPECT_EQ(token_map["d"].position, 2);
-    if (token_map.count("de")) EXPECT_EQ(token_map["de"].position, 2);
-    if (token_map.count("h")) EXPECT_EQ(token_map["h"].position, 3);
-    if (token_map.count("hua")) EXPECT_EQ(token_map["hua"].position, 3);
+    if (token_map.count("l")) { EXPECT_EQ(token_map["l"].position, 1); }
+    if (token_map.count("l德华")) { EXPECT_EQ(token_map["l德华"].position, 1); }
+    if (token_map.count("ldh")) { EXPECT_EQ(token_map["ldh"].position, 1); }
+    if (token_map.count("d")) { EXPECT_EQ(token_map["d"].position, 2); }
+    if (token_map.count("de")) { EXPECT_EQ(token_map["de"].position, 2); }
+    if (token_map.count("h")) { EXPECT_EQ(token_map["h"].position, 3); }
+    if (token_map.count("hua")) { EXPECT_EQ(token_map["hua"].position, 3); }
 }
 
 TEST_F(PinyinAnalysisTest, TestPinyinPositionWithNonChinese) {
@@ -925,12 +925,12 @@ TEST_F(PinyinAnalysisTest, TestPinyinPosition3) {
                 token_map[token.term] = token;
             }
 
-            if (token_map.count("liu")) EXPECT_EQ(token_map["liu"].position, 1);
-            if (token_map.count("liude华")) EXPECT_EQ(token_map["liude华"].position, 1);
-            if (token_map.count("liudeh")) EXPECT_EQ(token_map["liudeh"].position, 1);
-            if (token_map.count("de")) EXPECT_EQ(token_map["de"].position, 2);
-            if (token_map.count("h")) EXPECT_EQ(token_map["h"].position, 3);
-            if (token_map.count("hua")) EXPECT_EQ(token_map["hua"].position, 3);
+            if (token_map.count("liu")) { EXPECT_EQ(token_map["liu"].position, 1); }
+            if (token_map.count("liude华")) { EXPECT_EQ(token_map["liude华"].position, 1); }
+            if (token_map.count("liudeh")) { EXPECT_EQ(token_map["liudeh"].position, 1); }
+            if (token_map.count("de")) { EXPECT_EQ(token_map["de"].position, 2); }
+            if (token_map.count("h")) { EXPECT_EQ(token_map["h"].position, 3); }
+            if (token_map.count("hua")) { EXPECT_EQ(token_map["hua"].position, 3); }
         }
     }
 }

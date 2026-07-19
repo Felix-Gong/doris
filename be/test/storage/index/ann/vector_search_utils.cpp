@@ -63,7 +63,7 @@ std::unique_ptr<doris::segment_v2::VectorIndex> create_doris_index(IndexType ind
         throw std::invalid_argument("Unsupported index type");
     }
     index->build(params);
-    return std::move(index);
+    return index;
 }
 
 // Helper function to create a native Faiss index
