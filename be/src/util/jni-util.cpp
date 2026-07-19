@@ -121,7 +121,10 @@ const std::string GetKerb5ConfPath() {
             options = {
                     GetDorisJNIClasspathOption(), fmt::format("-Xmx{}", "1g"),
                     fmt::format("-DlogPath={}/log/jni.log", getenv("DORIS_HOME")),
-                    fmt::format("-Dsun.java.command={}", "DorisBE"), "-XX:-CriticalJNINatives",
+                    fmt::format("-Dsun.java.command={}", "DorisBE"),
+#ifndef __riscv
+                    "-XX:-CriticalJNINatives",
+#endif
                     fmt::format("-Djdk.lang.processReaperUseDefaultStackSize={}",
                                 config::jdk_process_reaper_use_default_stack_size),
 #ifdef __APPLE__
@@ -130,6 +133,11 @@ const std::string GetKerb5ConfPath() {
                     // and it can not pass the check performed by storage engine.
                     // The newer JDK has fixed this issue.
                     "-XX:-MaxFDLimit"
+#endif
+#ifdef __riscv
+                    // On RISC-V the JDK may not recognize every x86/aarch64 option
+                    // Doris forwards; ignore unknown ones instead of failing startup.
+                    "-XX:+IgnoreUnrecognizedVMOptions",
 #endif
             };
         } else {
@@ -151,7 +159,13 @@ const std::string GetKerb5ConfPath() {
         vm_args.options = jvm_options.get();
         vm_args.nOptions = cast_set<int>(options.size());
         // Set it to JNI_FALSE because JNI_TRUE will let JVM ignore the max size config.
+        // On RISC-V, JNI_TRUE is required so the JVM tolerates options it does not
+        // recognize (see -XX:+IgnoreUnrecognizedVMOptions above).
+#ifdef __riscv
+        vm_args.ignoreUnrecognized = JNI_TRUE;
+#else
         vm_args.ignoreUnrecognized = JNI_FALSE;
+#endif
 
         jint res = JNI_CreateJavaVM(&g_vm, (void**)&env, &vm_args);
         if (JNI_OK != res) {
