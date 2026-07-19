@@ -17,8 +17,10 @@
 | 5 | ba69ac1a2 | GCC/clang strict mode fixes | 22 | +67 |
 | 6 | 7ee9b88d7 | FAISS/paimon/FE build fixes | 13 | +126 |
 | 7 | 6a6ae9de4 | thirdparty patch scripts + build notes | 4 | +384 |
+| 8 | 0252b41ae | PR preparation docs + clang-wrapper notes | 2 | +207 |
+| 9 | bbecd95e5 | FE gRPC codegen: use native protoc-gen-grpc-java RISC-V binary | 1 | +1 |
 
-**Total**: 7 commits, ~1034 lines changed
+**Total**: 9 commits, ~1245 lines changed
 
 Plus 2 prior commits:
 - 73f09b023: RE2 fallback for multi-wildcard LIKE patterns
@@ -124,6 +126,21 @@ Items to upstream properly:
 - [ ] Add RISC-V cross-compilation CI (QEMU user-mode)
 
 ---
+
+## FE Build (RISC-V Verified)
+
+FE was successfully compiled on RISC-V (openEuler 24.03, riscv64):
+
+| Env | Value |
+|-----|-------|
+| Maven | 3.9.9 (manually installed; system is 3.6.3) |
+| JDK | 17.0.17 (BiSheng) |
+| protoc-gen-grpc-java | Native RISC-V binary v1.53.0 |
+| FE JAR | output/fe/lib/doris-fe.jar (~19MB) |
+| Build Status | **PASSED** (2026-07-13) |
+
+Key fix: `fe/fe-grpc/pom.xml` now uses the native RISC-V protoc-gen-grpc-java
+binary at `/tmp/protoc-gen-grpc-java` instead of a Python wrapper script.
 
 ## Build Verification
 

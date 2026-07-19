@@ -29,6 +29,7 @@ ROOT=$(
 )
 
 CURDIR="${ROOT}"
+unset http_proxy HTTP_PROXY https_proxy HTTPS_PROXY
 TPCDS_DATA_DIR="${CURDIR}/tpcds-data"
 
 usage() {
