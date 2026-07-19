@@ -388,7 +388,7 @@ public:
         } else if constexpr (std::is_same_v<T, jdouble>) {
             v.d = arg;
         } else {
-            static_assert(false);
+            __builtin_unreachable();
         }
         _args.push_back(v);
         return *this;
@@ -424,7 +424,7 @@ public:
             _env->DeleteLocalRef(tmp);
             RETURN_ERROR_IF_EXC(_env);
         } else {
-            static_assert(false);
+            __builtin_unreachable();
         }
         return Status::OK();
     }
@@ -478,7 +478,7 @@ public:
         } else if constexpr (std::is_same_v<T, jdouble>) {
             v.d = arg;
         } else {
-            static_assert(false);
+            __builtin_unreachable();
         }
         this->_args.push_back(v);
         return *this;
@@ -505,7 +505,7 @@ public:
             RETURN_ERROR_IF_EXC(this->_env);
             this->_env->DeleteLocalRef(tmp);
         } else {
-            static_assert(false);
+            __builtin_unreachable();
         }
         return Status::OK();
     }
@@ -691,7 +691,7 @@ public:
             result->_buffer =
                     (char*)env->GetByteArrayElements((jbyteArray)result->_object._obj, isCopy);
         } else {
-            static_assert(false);
+            __builtin_unreachable();
         }
 
         RETURN_ERROR_IF_EXC(env);
@@ -756,7 +756,7 @@ public:
             RETURN_ERROR_IF_EXC(env);
             RETURN_IF_ERROR(local_to_global_ref(env, local_result, result));
         } else {
-            static_assert(false);
+            __builtin_unreachable();
         }
         return Status::OK();
     }
@@ -858,7 +858,7 @@ public:
             RETURN_ERROR_IF_EXC(env);
             return local_to_global_ref(env, local_class, result);
         } else {
-            static_assert(false);
+            __builtin_unreachable();
         }
     }
 
@@ -1054,7 +1054,7 @@ public:
             RETURN_IF_ERROR(Array<Local>::WriteBufferToByteArray(env, buffer, size, &local_obj));
             return local_to_global_ref(env, local_obj, serialized_msg);
         } else {
-            static_assert(false);
+            __builtin_unreachable();
         }
     }
 
@@ -1062,12 +1062,12 @@ public:
     static Status SerializeThriftMsg(JNIEnv* env, T* msg, Array<Ref>* serialized_msg) {
         if constexpr (Ref == Local) {
             return Array<Local>::SerializeThriftMsg(env, msg, serialized_msg);
-        } else if (Ref == Global) {
+        } else if constexpr (Ref == Global) {
             Array<Local> local_obj;
             RETURN_IF_ERROR(Array<Local>::SerializeThriftMsg(env, msg, local_obj));
             return local_to_global_ref(env, local_obj, serialized_msg);
         } else {
-            static_assert(false);
+            __builtin_unreachable();
         }
     }
 
