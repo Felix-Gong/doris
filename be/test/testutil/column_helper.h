@@ -43,7 +43,7 @@ public:
                 column->insert_value(datum);
             }
         }
-        return std::move(column);
+        return column;
     }
 
     template <PrimitiveType Offset>
@@ -53,7 +53,7 @@ public:
         for (const auto& datum : data) {
             column->insert_value(datum);
         }
-        return std::move(column);
+        return column;
     }
 
     template <typename DataType>

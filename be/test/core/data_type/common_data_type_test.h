@@ -50,7 +50,7 @@
 
 namespace doris {
 
-static bool gen_check_data_in_assert = true;
+[[maybe_unused]] static bool gen_check_data_in_assert = true;
 
 class CommonDataTypeTest : public ::testing::Test {
 public:
