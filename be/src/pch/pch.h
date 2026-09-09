@@ -27,6 +27,7 @@
 #endif
 
 // CLucene headers
+#ifdef CLUCENE_ENABLED
 #include <CLucene.h>
 #include <CLucene/analysis/LanguageBasedAnalyzer.h>
 #include <CLucene/clucene-config.h>
@@ -40,6 +41,7 @@
 #include <CLucene/store/RAMDirectory.h>
 #include <CLucene/util/Misc.h>
 #include <CLucene/util/bkd/bkd_reader.h>
+#endif
 
 // arrow headers
 #include <arrow/array/array_base.h>

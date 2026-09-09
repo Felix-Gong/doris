@@ -60,3 +60,7 @@ endif()
 
 #add_dependencies(DorisGen thrift-cpp)
 #add_dependencies(Opcode function)
+
+if (ARCH_RISCV64)
+    target_compile_options(DorisGen PRIVATE -O0)
+endif()
