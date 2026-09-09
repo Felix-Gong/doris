@@ -43,12 +43,16 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(ppc64le.*|PPC64LE.*)")
     set (ARCH_PPC64LE 1)
 endif ()
 
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(riscv64.*|RISCV64.*)")
+    set (ARCH_RISCV64 1)
+endif ()
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
     set (OS_LINUX 1)
     # No space after -D: "-D OS_LINUX" becomes two argv entries in some
     # generators, and the dangling "-D" then swallows the next flag
     # (doris_be_test lost its -fno-access-control this way).
     add_definitions(-DOS_LINUX)
+    add_definitions(-D_UCS2 -D_UNICODE)
 elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin")
     set (OS_MACOSX 1)
     add_definitions(-DOS_MACOSX)
@@ -311,24 +315,34 @@ set(USE_STAT64 0)
 # disable clucene bthread supported.
 set(USE_BTHREAD OFF)
 
-# Out of source build need to set the binary dir
-add_subdirectory(${CONTRIB_PATH}/clucene ${PROJECT_BINARY_DIR}/clucene EXCLUDE_FROM_ALL)
+if (NOT ARCH_RISCV64)
+    # Out of source build need to set the binary dir
+    add_subdirectory(${CONTRIB_PATH}/clucene ${PROJECT_BINARY_DIR}/clucene EXCLUDE_FROM_ALL)
 
-set(clucene_options -fno-omit-frame-pointer -w -Wall)
-if (COMPILER_CLANG)
-    set(clucene_options ${clucene_options} -Wno-c++11-narrowing)
-else ()
-    set(clucene_options ${clucene_options} -Wno-narrowing)
+    set(clucene_options -fno-omit-frame-pointer -w -Wall)
+    if (COMPILER_CLANG)
+        set(clucene_options ${clucene_options} -Wno-c++11-narrowing)
+    else ()
+        set(clucene_options ${clucene_options} -Wno-narrowing)
+    endif()
+
+    target_compile_options(clucene-core-static PRIVATE ${clucene_options})
+    target_compile_options(clucene-shared-static PRIVATE ${clucene_options})
+    target_compile_options(clucene-contribs-lib PRIVATE ${clucene_options})
+    target_compile_options(ic PRIVATE ${clucene_options})
+
+    install(DIRECTORY
+        ${CONTRIB_PATH}/clucene/src/contribs-lib/CLucene/analysis/jieba/dict
+        DESTINATION ${OUTPUT_DIR})
+else()
+    # RISC-V: the clucene contrib submodule is not built for this
+    # architecture yet (full-text index support is unavailable on riscv64).
+    add_subdirectory(${CONTRIB_PATH}/clucene ${PROJECT_BINARY_DIR}/clucene)
+    set(clucene_options -fno-omit-frame-pointer -w -Wall)
+    target_compile_options(clucene-core-static PRIVATE ${clucene_options})
+    target_compile_options(clucene-shared-static PRIVATE ${clucene_options})
+    target_compile_options(clucene-contribs-lib PRIVATE ${clucene_options})
 endif()
-
-target_compile_options(clucene-core-static PRIVATE ${clucene_options})
-target_compile_options(clucene-shared-static PRIVATE ${clucene_options})
-target_compile_options(clucene-contribs-lib PRIVATE ${clucene_options})
-target_compile_options(ic PRIVATE ${clucene_options})
-
-install(DIRECTORY
-    ${CONTRIB_PATH}/clucene/src/contribs-lib/CLucene/analysis/jieba/dict
-    DESTINATION ${OUTPUT_DIR})
 
 install(DIRECTORY
     ${BASE_DIR}/dict/icu/uax29
@@ -383,11 +397,24 @@ if (NOT OS_MACOSX) # MACOSX's lld will core dump
     # In terms of performance, mold> lld> gold> ld
     set(CUSTUM_LINKER_COMMAND "ld")
     TRY_TO_CHANGE_LINKER("mold" "mold")
-    TRY_TO_CHANGE_LINKER("lld" "LLD")
+    # lld on riscv64 does not support R_RISCV_ADD64/R_RISCV_SUB64 relocations
+    # in .gcc_except_table sections (GCC-style exception tables).
+    # Fall through to ld.bfd which handles these correctly.
+    if (NOT CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64|riscv")
+        TRY_TO_CHANGE_LINKER("lld" "LLD")
+    endif ()
     TRY_TO_CHANGE_LINKER("gold" "GNU gold")
     if (NOT CUSTUM_LINKER_COMMAND STREQUAL "ld")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=${CUSTUM_LINKER_COMMAND}")
     endif()
+
+# lld on riscv64 is strict about duplicate symbols from static archives.
+# Several thirdparty deps (gRPC, arrow, etc.) bring in abseil symbols that
+# collide with the explicit absl:: targets. Allow duplicates to match
+# behaviour of GNU ld / gold on other architectures.
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64|riscv")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition")
+endif ()
 endif()
 
 
@@ -511,6 +538,11 @@ if (ARCH_ARM)
     add_definitions(-DLIBDIVIDE_NEON)
 endif()
 SET(ARM_MARCH "${ARM_MARCH}")
+
+if (ARCH_RISCV64)
+    add_compile_options(-march=rv64gcv_zba_zbc)
+    message(STATUS "RISC-V march: rv64gcv_zba_zbc (Vector + Zba + Zbc)")
+endif()
 
 if (ENABLE_INJECTION_POINT)
     set(CXX_COMMON_FLAGS "${CXX_COMMON_FLAGS} -DENABLE_INJECTION_POINT")
@@ -674,7 +706,16 @@ set(DORIS_LINK_LIBS
     CommonCPP
 )
 
-set(absl_DIR ${THIRDPARTY_DIR}/lib/cmake/absl)
+if (ARCH_RISCV64)
+    set(DORIS_LINK_LIBS ${DORIS_LINK_LIBS}
+        -Wl,--whole-archive
+        icuuc
+        icui18n
+        icudata
+        -Wl,--no-whole-archive)
+endif()
+
+set(absl_DIR ${THIRDPARTY_DIR}/lib64/cmake/absl)
 find_package(absl)
 
 # COMMON_THIRDPARTY are thirdparty dependencies that can run on all platform
@@ -855,7 +896,17 @@ if (GLIBC_COMPATIBILITY)
     # Keep lance_c here instead of COMMON_THIRDPARTY: placing its required libm there
     # would resolve -lm symbol before Doris compatibility is scanned, preventing
     # the linker from selecting Doris' optimized implementations.
+    # lance_c can also introduce single-precision math references after the
+    # compatibility archive has already been scanned. As ClickHouse does for its
+    # compatibility archive, force the GLIBC_2.27 math symbols to be undefined up
+    # front so the linker extracts Doris' musl implementations instead of binding
+    # late references to the toolchain's libm.
     set(DORIS_LINK_LIBS ${DORIS_LINK_LIBS}
+        -Wl,-u,logf
+        -Wl,-u,powf
+        -Wl,-u,expf
+        -Wl,-u,exp2f
+        -Wl,-u,log2f
         glibc-compatibility-explicit
         glibc-compatibility
         -lm
