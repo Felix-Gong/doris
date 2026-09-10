@@ -45,6 +45,7 @@ import org.apache.doris.meta.MetaContext;
 import org.apache.doris.nereids.trees.plans.commands.CancelAlterTableCommand;
 import org.apache.doris.nereids.trees.plans.commands.info.AddRollupOp;
 import org.apache.doris.nereids.trees.plans.commands.info.AlterOp;
+import org.apache.doris.persist.gson.GsonUtils;
 import org.apache.doris.qe.ConnectContext;
 import org.apache.doris.qe.OriginStatement;
 import org.apache.doris.task.AgentBatchTask;
@@ -57,10 +58,10 @@ import org.apache.doris.transaction.FakeTransactionIDGenerator;
 import org.apache.doris.transaction.GlobalTransactionMgrIface;
 
 import com.google.common.collect.Lists;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
@@ -92,7 +93,7 @@ public class RollupJobV2Test {
     private FakeEditLog fakeEditLog;
     private MockedStatic<AgentTaskExecutor> agentTaskExecutorMock;
 
-    @Before
+    @BeforeEach
     public void setUp() throws InstantiationException, IllegalAccessException, IllegalArgumentException,
             InvocationTargetException, NoSuchMethodException, SecurityException, UserException {
         fakeEnv = new FakeEnv();
@@ -125,7 +126,7 @@ public class RollupJobV2Test {
                 .thenAnswer(invocation -> null);
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         File file = new File(fileName);
         file.delete();
@@ -165,9 +166,9 @@ public class RollupJobV2Test {
 
         materializedViewHandler.runAfterCatalogReady();
 
-        Assert.assertEquals(Config.max_running_rollup_job_num_per_table, materializedViewHandler.getTableRunningJobMap().get(CatalogTestUtil.testTableId1).size());
-        Assert.assertEquals(2, alterJobsV2.size());
-        Assert.assertEquals(OlapTableState.ROLLUP, olapTable.getState());
+        Assertions.assertEquals(Config.max_running_rollup_job_num_per_table, materializedViewHandler.getTableRunningJobMap().get(CatalogTestUtil.testTableId1).size());
+        Assertions.assertEquals(2, alterJobsV2.size());
+        Assertions.assertEquals(OlapTableState.ROLLUP, olapTable.getState());
     }
 
     @Test
@@ -188,8 +189,8 @@ public class RollupJobV2Test {
         OlapTable olapTable = (OlapTable) db.getTableOrDdlException(CatalogTestUtil.testTableId1);
         materializedViewHandler.process(alterOps, db, olapTable);
         Map<Long, AlterJobV2> alterJobsV2 = materializedViewHandler.getAlterJobsV2();
-        Assert.assertEquals(1, alterJobsV2.size());
-        Assert.assertEquals(OlapTableState.ROLLUP, olapTable.getState());
+        Assertions.assertEquals(1, alterJobsV2.size());
+        Assertions.assertEquals(OlapTableState.ROLLUP, olapTable.getState());
     }
 
     @Test
@@ -211,7 +212,7 @@ public class RollupJobV2Test {
         OlapTable olapTable = (OlapTable) db.getTableOrDdlException(CatalogTestUtil.testTableId1);
         materializedViewHandler.process(alterOps, db, olapTable);
         Map<Long, AlterJobV2> alterJobsV2 = materializedViewHandler.getAlterJobsV2();
-        Assert.assertEquals(1, alterJobsV2.size());
+        Assertions.assertEquals(1, alterJobsV2.size());
 
         RollupJobV2 rollupJob = (RollupJobV2) alterJobsV2.values().stream().findAny().get();
         CancelAlterTableCommand cancelAlterTableCommand = new CancelAlterTableCommand(
@@ -220,7 +221,7 @@ public class RollupJobV2Test {
                 Lists.newArrayList());
         materializedViewHandler.cancel(cancelAlterTableCommand);
 
-        Assert.assertEquals(JobState.CANCELLED, rollupJob.getJobState());
+        Assertions.assertEquals(JobState.CANCELLED, rollupJob.getJobState());
     }
 
     // start a schema change, then finished
@@ -245,27 +246,27 @@ public class RollupJobV2Test {
         Partition testPartition = olapTable.getPartition(CatalogTestUtil.testPartitionId1);
         materializedViewHandler.process(alterOps, db, olapTable);
         Map<Long, AlterJobV2> alterJobsV2 = materializedViewHandler.getAlterJobsV2();
-        Assert.assertEquals(1, alterJobsV2.size());
+        Assertions.assertEquals(1, alterJobsV2.size());
         RollupJobV2 rollupJob = (RollupJobV2) alterJobsV2.values().stream().findAny().get();
 
         // runPendingJob
         materializedViewHandler.runAfterCatalogReady();
-        Assert.assertEquals(JobState.WAITING_TXN, rollupJob.getJobState());
-        Assert.assertEquals(2, testPartition.getMaterializedIndices(IndexExtState.ALL).size());
-        Assert.assertEquals(1, testPartition.getMaterializedIndices(IndexExtState.VISIBLE).size());
-        Assert.assertEquals(1, testPartition.getMaterializedIndices(IndexExtState.SHADOW).size());
+        Assertions.assertEquals(JobState.WAITING_TXN, rollupJob.getJobState());
+        Assertions.assertEquals(2, testPartition.getMaterializedIndices(IndexExtState.ALL).size());
+        Assertions.assertEquals(1, testPartition.getMaterializedIndices(IndexExtState.VISIBLE).size());
+        Assertions.assertEquals(1, testPartition.getMaterializedIndices(IndexExtState.SHADOW).size());
 
         // runWaitingTxnJob
         materializedViewHandler.runAfterCatalogReady();
-        Assert.assertEquals(JobState.RUNNING, rollupJob.getJobState());
+        Assertions.assertEquals(JobState.RUNNING, rollupJob.getJobState());
 
         // runWaitingTxnJob, task not finished
         materializedViewHandler.runAfterCatalogReady();
-        Assert.assertEquals(JobState.RUNNING, rollupJob.getJobState());
+        Assertions.assertEquals(JobState.RUNNING, rollupJob.getJobState());
 
         // finish all tasks
         List<AgentTask> tasks = AgentTaskQueue.getTask(TTaskType.ALTER);
-        Assert.assertEquals(3, tasks.size());
+        Assertions.assertEquals(3, tasks.size());
         for (AgentTask agentTask : tasks) {
             agentTask.setFinished(true);
         }
@@ -277,7 +278,7 @@ public class RollupJobV2Test {
         }
 
         materializedViewHandler.runAfterCatalogReady();
-        Assert.assertEquals(JobState.FINISHED, rollupJob.getJobState());
+        Assertions.assertEquals(JobState.FINISHED, rollupJob.getJobState());
     }
 
     @Test
@@ -299,17 +300,17 @@ public class RollupJobV2Test {
         OlapTable olapTable = (OlapTable) db.getTableOrDdlException(CatalogTestUtil.testTableId1);
         materializedViewHandler.process(alterOps, db, olapTable);
         Map<Long, AlterJobV2> alterJobsV2 = materializedViewHandler.getAlterJobsV2();
-        Assert.assertEquals(1, alterJobsV2.size());
+        Assertions.assertEquals(1, alterJobsV2.size());
         RollupJobV2 rollupJob = (RollupJobV2) alterJobsV2.values().stream().findAny().get();
 
         materializedViewHandler.runAfterCatalogReady();
-        Assert.assertEquals(JobState.WAITING_TXN, rollupJob.getJobState());
+        Assertions.assertEquals(JobState.WAITING_TXN, rollupJob.getJobState());
 
         materializedViewHandler.runAfterCatalogReady();
-        Assert.assertEquals(JobState.RUNNING, rollupJob.getJobState());
+        Assertions.assertEquals(JobState.RUNNING, rollupJob.getJobState());
 
         List<AgentTask> tasks = AgentTaskQueue.getTask(TTaskType.ALTER);
-        Assert.assertEquals(3, tasks.size());
+        Assertions.assertEquals(3, tasks.size());
         long failedTabletId = tasks.get(0).getTabletId();
         int failedTaskCount = 0;
         for (AgentTask agentTask : tasks) {
@@ -321,10 +322,10 @@ public class RollupJobV2Test {
                 break;
             }
         }
-        Assert.assertEquals(2, failedTaskCount);
+        Assertions.assertEquals(2, failedTaskCount);
 
         materializedViewHandler.runAfterCatalogReady();
-        Assert.assertEquals(JobState.CANCELLED, rollupJob.getJobState());
+        Assertions.assertEquals(JobState.CANCELLED, rollupJob.getJobState());
     }
 
     @Test
@@ -348,13 +349,13 @@ public class RollupJobV2Test {
         Partition testPartition = olapTable.getPartition(CatalogTestUtil.testPartitionId1);
         materializedViewHandler.process(alterOps, db, olapTable);
         Map<Long, AlterJobV2> alterJobsV2 = materializedViewHandler.getAlterJobsV2();
-        Assert.assertEquals(1, alterJobsV2.size());
+        Assertions.assertEquals(1, alterJobsV2.size());
         RollupJobV2 rollupJob = (RollupJobV2) alterJobsV2.values().stream().findAny().get();
 
         MaterializedIndex baseIndex = testPartition.getBaseIndex();
-        Assert.assertEquals(MaterializedIndex.IndexState.NORMAL, baseIndex.getState());
-        Assert.assertEquals(Partition.PartitionState.NORMAL, testPartition.getState());
-        Assert.assertEquals(OlapTableState.ROLLUP, olapTable.getState());
+        Assertions.assertEquals(MaterializedIndex.IndexState.NORMAL, baseIndex.getState());
+        Assertions.assertEquals(Partition.PartitionState.NORMAL, testPartition.getState());
+        Assertions.assertEquals(OlapTableState.ROLLUP, olapTable.getState());
 
         Tablet baseTablet = baseIndex.getTablets().get(0);
         List<Replica> replicas = baseTablet.getReplicas();
@@ -362,40 +363,40 @@ public class RollupJobV2Test {
         Replica replica2 = replicas.get(1);
         Replica replica3 = replicas.get(2);
 
-        Assert.assertEquals(CatalogTestUtil.testStartVersion, replica1.getVersion());
-        Assert.assertEquals(CatalogTestUtil.testStartVersion, replica2.getVersion());
-        Assert.assertEquals(CatalogTestUtil.testStartVersion, replica3.getVersion());
-        Assert.assertEquals(-1, replica1.getLastFailedVersion());
-        Assert.assertEquals(-1, replica2.getLastFailedVersion());
-        Assert.assertEquals(-1, replica3.getLastFailedVersion());
-        Assert.assertEquals(CatalogTestUtil.testStartVersion, replica1.getLastSuccessVersion());
-        Assert.assertEquals(CatalogTestUtil.testStartVersion, replica2.getLastSuccessVersion());
-        Assert.assertEquals(CatalogTestUtil.testStartVersion, replica3.getLastSuccessVersion());
+        Assertions.assertEquals(CatalogTestUtil.testStartVersion, replica1.getVersion());
+        Assertions.assertEquals(CatalogTestUtil.testStartVersion, replica2.getVersion());
+        Assertions.assertEquals(CatalogTestUtil.testStartVersion, replica3.getVersion());
+        Assertions.assertEquals(-1, replica1.getLastFailedVersion());
+        Assertions.assertEquals(-1, replica2.getLastFailedVersion());
+        Assertions.assertEquals(-1, replica3.getLastFailedVersion());
+        Assertions.assertEquals(CatalogTestUtil.testStartVersion, replica1.getLastSuccessVersion());
+        Assertions.assertEquals(CatalogTestUtil.testStartVersion, replica2.getLastSuccessVersion());
+        Assertions.assertEquals(CatalogTestUtil.testStartVersion, replica3.getLastSuccessVersion());
 
         // runPendingJob
         replica1.setState(Replica.ReplicaState.DECOMMISSION);
         materializedViewHandler.runAfterCatalogReady();
-        Assert.assertEquals(JobState.PENDING, rollupJob.getJobState());
+        Assertions.assertEquals(JobState.PENDING, rollupJob.getJobState());
 
         // table is stable, runPendingJob again
         replica1.setState(Replica.ReplicaState.NORMAL);
         materializedViewHandler.runAfterCatalogReady();
-        Assert.assertEquals(JobState.WAITING_TXN, rollupJob.getJobState());
-        Assert.assertEquals(2, testPartition.getMaterializedIndices(IndexExtState.ALL).size());
-        Assert.assertEquals(1, testPartition.getMaterializedIndices(IndexExtState.VISIBLE).size());
-        Assert.assertEquals(1, testPartition.getMaterializedIndices(IndexExtState.SHADOW).size());
+        Assertions.assertEquals(JobState.WAITING_TXN, rollupJob.getJobState());
+        Assertions.assertEquals(2, testPartition.getMaterializedIndices(IndexExtState.ALL).size());
+        Assertions.assertEquals(1, testPartition.getMaterializedIndices(IndexExtState.VISIBLE).size());
+        Assertions.assertEquals(1, testPartition.getMaterializedIndices(IndexExtState.SHADOW).size());
 
         // runWaitingTxnJob
         materializedViewHandler.runAfterCatalogReady();
-        Assert.assertEquals(JobState.RUNNING, rollupJob.getJobState());
+        Assertions.assertEquals(JobState.RUNNING, rollupJob.getJobState());
 
         // runWaitingTxnJob, task not finished
         materializedViewHandler.runAfterCatalogReady();
-        Assert.assertEquals(JobState.RUNNING, rollupJob.getJobState());
+        Assertions.assertEquals(JobState.RUNNING, rollupJob.getJobState());
 
         // finish all tasks
         List<AgentTask> tasks = AgentTaskQueue.getTask(TTaskType.ALTER);
-        Assert.assertEquals(3, tasks.size());
+        Assertions.assertEquals(3, tasks.size());
         for (AgentTask agentTask : tasks) {
             agentTask.setFinished(true);
         }
@@ -407,7 +408,7 @@ public class RollupJobV2Test {
         }
 
         materializedViewHandler.runAfterCatalogReady();
-        Assert.assertEquals(JobState.FINISHED, rollupJob.getJobState());
+        Assertions.assertEquals(JobState.FINISHED, rollupJob.getJobState());
     }
 
 
@@ -444,12 +445,48 @@ public class RollupJobV2Test {
 
         DataInputStream in = new DataInputStream(new FileInputStream(file));
         RollupJobV2 result = (RollupJobV2) AlterJobV2.read(in);
-        Assert.assertEquals(TStorageFormat.V2, Deencapsulation.getField(result, "storageFormat"));
+        Assertions.assertEquals(TStorageFormat.V2, Deencapsulation.getField(result, "storageFormat"));
         List<Column> resultColumns = Deencapsulation.getField(result, "rollupSchema");
-        Assert.assertEquals(1, resultColumns.size());
+        Assertions.assertEquals(1, resultColumns.size());
         Column resultColumn1 = resultColumns.get(0);
-        Assert.assertEquals(mvColumnName,
+        Assertions.assertEquals(mvColumnName,
                 resultColumn1.getName());
+    }
+
+    @Test
+    public void testDeserializeOldRollupJobWithoutOrigStmt() {
+        String oldJson = "{"
+                + "\"clazz\":\"RollupJobV2\","
+                + "\"type\":\"ROLLUP\","
+                + "\"jobId\":1,"
+                + "\"jobState\":\"FINISHED\","
+                + "\"dbId\":1,"
+                + "\"tableId\":1,"
+                + "\"tableName\":\"test\","
+                + "\"errMsg\":\"\","
+                + "\"createTimeMs\":1,"
+                + "\"finishedTimeMs\":2,"
+                + "\"timeoutMs\":3,"
+                + "\"rawSql\":\"\","
+                + "\"watershedTxnId\":4,"
+                + "\"failedTabletBackends\":{},"
+                + "\"partitionIdToBaseRollupTabletIdMap\":{},"
+                + "\"partitionIdToRollupIndex\":{},"
+                + "\"baseIndexId\":1,"
+                + "\"rollupIndexId\":2,"
+                + "\"baseIndexName\":\"base\","
+                + "\"rollupIndexName\":\"rollup\","
+                + "\"rollupSchema\":[],"
+                + "\"baseSchemaHash\":1,"
+                + "\"rollupSchemaHash\":2,"
+                + "\"rollupKeysType\":\"AGG_KEYS\","
+                + "\"rollupShortKeyColumnCount\":1,"
+                + "\"storageFormat\":\"V2\","
+                + "\"sv\":{}"
+                + "}";
+
+        RollupJobV2 result = (RollupJobV2) GsonUtils.GSON.fromJson(oldJson, AlterJobV2.class);
+        Assertions.assertEquals(JobState.FINISHED, Deencapsulation.getField(result, "showJobState"));
     }
 
     @Test
@@ -472,7 +509,7 @@ public class RollupJobV2Test {
         List<Column> columns = materializedViewHandler.checkAndPrepareMaterializedView(addRollupOp, olapTable, CatalogTestUtil.testIndexId2, false);
         for (Column column : columns) {
             if (column.nameEquals("v1", true)) {
-                Assert.assertNull(column.getAggregationType());
+                Assertions.assertNull(column.getAggregationType());
                 break;
             }
         }

@@ -17,20 +17,109 @@
 
 #include "core/data_type_serde/data_type_string_serde.h"
 
+#include <algorithm>
 #include <array>
 #include <cstring>
+#include <limits>
 
 #include "common/config.h"
 #include "core/column/column_string.h"
+#include "core/column/column_vector.h"
 #include "core/data_type/define_primitive_type.h"
 #include "core/data_type_serde/arrow_validation.h"
 #include "core/data_type_serde/decoded_column_view.h"
+#include "core/data_type_serde/orc_serde_utils.h"
+#include "core/data_type_serde/parquet_decode_source.h"
 #include "util/jsonb_document_cast.h"
 #include "util/jsonb_utils.h"
 #include "util/jsonb_writer.h"
 
 namespace doris {
 namespace {
+
+size_t trim_right_spaces(const char* value, size_t length) {
+    while (length > 0 && value[length - 1] == ' ') {
+        --length;
+    }
+    return length;
+}
+
+Status append_orc_string_ref(const ::orc::Type& file_type, const char* data, int64_t length,
+                             std::vector<StringRef>& binary_values) {
+    if (length < 0) {
+        return Status::Corruption("Invalid negative ORC string length {}", length);
+    }
+    auto value_length = static_cast<size_t>(length);
+    if (file_type.getKind() == ::orc::TypeKind::CHAR) {
+        value_length = trim_right_spaces(data, value_length);
+    }
+    binary_values.emplace_back(value_length == 0 ? "" : data, value_length);
+    return Status::OK();
+}
+
+Status decode_string_orc_values(const DataTypeSerDe& serde, IColumn& column,
+                                const OrcDecodedColumnView& orc_view) {
+    DORIS_CHECK(orc_view.file_type != nullptr);
+    if (const auto* encoded_batch =
+                dynamic_cast<const ::orc::EncodedStringVectorBatch*>(orc_view.batch);
+        encoded_batch != nullptr && encoded_batch->isEncoded) {
+        if (encoded_batch->dictionary == nullptr) {
+            return Status::InternalError("Encoded ORC string batch has no dictionary");
+        }
+        auto view = orc_serde_utils::make_orc_decoded_view(orc_view, DecodedValueKind::BINARY);
+        NullMap null_map;
+        orc_serde_utils::fill_orc_decoded_null_map(*orc_view.batch, orc_view.rows,
+                                                   orc_view.selected_rows, &null_map);
+        view.null_map = null_map.empty() ? nullptr : null_map.data();
+        const auto output_rows =
+                orc_serde_utils::orc_decode_row_count(orc_view.rows, orc_view.selected_rows);
+        std::vector<StringRef> binary_values;
+        binary_values.reserve(output_rows);
+        for (size_t row = 0; row < output_rows; ++row) {
+            const auto source_row = orc_serde_utils::orc_source_row_at(row, orc_view.selected_rows);
+            if (orc_serde_utils::orc_row_is_null(*orc_view.batch, source_row)) {
+                binary_values.emplace_back("", 0);
+                continue;
+            }
+            char* data = nullptr;
+            int64_t length = 0;
+            encoded_batch->dictionary->getValueByIndex(encoded_batch->index[source_row], data,
+                                                       length);
+            RETURN_IF_ERROR(
+                    append_orc_string_ref(*orc_view.file_type, data, length, binary_values));
+        }
+        view.binary_values = &binary_values;
+        RETURN_IF_ERROR(orc_serde_utils::read_decoded_values(serde, column, &view));
+        return Status::OK();
+    }
+
+    const auto* orc_batch = dynamic_cast<const ::orc::StringVectorBatch*>(orc_view.batch);
+    if (orc_batch == nullptr) {
+        return Status::InternalError("Unexpected ORC string batch type {}",
+                                     orc_view.batch->toString());
+    }
+    auto view = orc_serde_utils::make_orc_decoded_view(orc_view, DecodedValueKind::BINARY);
+    NullMap null_map;
+    orc_serde_utils::fill_orc_decoded_null_map(*orc_view.batch, orc_view.rows,
+                                               orc_view.selected_rows, &null_map);
+    view.null_map = null_map.empty() ? nullptr : null_map.data();
+    const auto output_rows =
+            orc_serde_utils::orc_decode_row_count(orc_view.rows, orc_view.selected_rows);
+    std::vector<StringRef> binary_values;
+    binary_values.reserve(output_rows);
+    for (size_t row = 0; row < output_rows; ++row) {
+        const auto source_row = orc_serde_utils::orc_source_row_at(row, orc_view.selected_rows);
+        if (orc_serde_utils::orc_row_is_null(*orc_view.batch, source_row)) {
+            binary_values.emplace_back("", 0);
+            continue;
+        }
+        RETURN_IF_ERROR(append_orc_string_ref(*orc_view.file_type, orc_batch->data[source_row],
+                                              orc_batch->length[source_row], binary_values));
+    }
+    view.binary_values = &binary_values;
+    RETURN_IF_ERROR(orc_serde_utils::read_decoded_values(serde, column, &view));
+    return Status::OK();
+}
 
 template <typename ColumnType>
 Status read_string_decoded_values(IColumn& column, const DecodedColumnView& view) {
@@ -56,6 +145,65 @@ Status read_string_decoded_values(IColumn& column, const DecodedColumnView& view
     }
     return Status::OK();
 }
+
+template <typename ColumnType>
+class StringParquetConsumer final : public ParquetFixedValueConsumer,
+                                    public ParquetBinaryValueConsumer {
+public:
+    explicit StringParquetConsumer(IColumn& column) : _column(assert_cast<ColumnType&>(column)) {}
+
+    Status consume(const uint8_t* values, size_t num_values, size_t value_width) override {
+        if constexpr (requires(ColumnType& column) {
+                          column.insert_many_fixed_length_data(static_cast<const char*>(nullptr),
+                                                               size_t(), size_t());
+                      }) {
+            // FIXED_LEN_BYTE_ARRAY is already a dense byte span. Copy it once and synthesize
+            // offsets; StringRef batches add a second row loop and hundreds of tiny memcpy calls.
+            _column.insert_many_fixed_length_data(reinterpret_cast<const char*>(values),
+                                                  value_width, num_values);
+        } else {
+            static constexpr size_t BATCH_SIZE = 256;
+            std::array<StringRef, BATCH_SIZE> refs;
+            size_t offset = 0;
+            while (offset < num_values) {
+                const size_t batch_size = std::min(BATCH_SIZE, num_values - offset);
+                for (size_t row = 0; row < batch_size; ++row) {
+                    refs[row] = StringRef(
+                            reinterpret_cast<const char*>(values + (offset + row) * value_width),
+                            value_width);
+                }
+                _column.insert_many_strings(refs.data(), batch_size);
+                offset += batch_size;
+            }
+        }
+        return Status::OK();
+    }
+
+    Status consume(const StringRef* values, size_t num_values) override {
+        _column.insert_many_strings(values, num_values);
+        return Status::OK();
+    }
+
+    Status consume_plain_byte_array(
+            const char* encoded_data, const uint32_t* payload_offsets,
+            const uint32_t* value_offsets, size_t num_values,
+            const std::vector<ParquetSelectionRange>& value_spans) override {
+        if constexpr (requires(ColumnType& column) {
+                          column.insert_many_parquet_plain_byte_arrays(
+                                  encoded_data, payload_offsets, value_offsets, num_values,
+                                  value_spans);
+                      }) {
+            _column.insert_many_parquet_plain_byte_arrays(encoded_data, payload_offsets,
+                                                          value_offsets, num_values, value_spans);
+            return Status::OK();
+        }
+        return ParquetBinaryValueConsumer::consume_plain_byte_array(
+                encoded_data, payload_offsets, value_offsets, num_values, value_spans);
+    }
+
+private:
+    ColumnType& _column;
+};
 
 } // namespace
 
@@ -497,6 +645,57 @@ Status DataTypeStringSerDeBase<ColumnType>::read_column_from_decoded_values(
 }
 
 template <typename ColumnType>
+Status DataTypeStringSerDeBase<ColumnType>::read_parquet_dictionary(
+        IColumn& column, ParquetDecodeSource& source, const ParquetDecodeContext& context) const {
+    StringParquetConsumer<ColumnType> consumer(column);
+    return source.decode_dictionary(consumer, consumer);
+}
+
+template <typename ColumnType>
+Status DataTypeStringSerDeBase<ColumnType>::read_column_from_parquet(
+        IColumn& column, ParquetDecodeSource& source, const ParquetDecodeContext& context,
+        size_t num_values, ParquetMaterializationState& state) const {
+    if (context.dictionary_index_only) {
+        if (context.encoding != ParquetValueEncoding::DICTIONARY) {
+            return Status::IOError("Dictionary filter requested for a non-dictionary page");
+        }
+        RETURN_IF_ERROR(source.decode_dictionary_indices(num_values, &state.dictionary_indices));
+        auto& indices = assert_cast<ColumnInt32&>(column).get_data();
+        const size_t old_size = indices.size();
+        indices.resize(old_size + num_values);
+        for (size_t row = 0; row < num_values; ++row) {
+            if (UNLIKELY(state.dictionary_indices[row] >
+                         static_cast<uint32_t>(std::numeric_limits<int32_t>::max()))) {
+                indices.resize(old_size);
+                return Status::Corruption("Parquet dictionary index {} exceeds INT32",
+                                          state.dictionary_indices[row]);
+            }
+            indices[old_size + row] = static_cast<int32_t>(state.dictionary_indices[row]);
+        }
+        return Status::OK();
+    }
+    StringParquetConsumer<ColumnType> consumer(column);
+    if (context.encoding != ParquetValueEncoding::DICTIONARY) {
+        if (context.physical_type == ParquetPhysicalType::BYTE_ARRAY) {
+            return source.decode_binary_values(num_values, consumer);
+        }
+        if (context.physical_type == ParquetPhysicalType::FIXED_LEN_BYTE_ARRAY) {
+            return source.decode_fixed_values(num_values, consumer);
+        }
+        return Status::NotSupported("Unsupported Parquet physical type {} for string SerDe",
+                                    static_cast<int>(context.physical_type));
+    }
+
+    if (state.dictionary_generation != source.dictionary_generation()) {
+        state.typed_dictionary = column.clone_empty();
+        RETURN_IF_ERROR(read_parquet_dictionary(*state.typed_dictionary, source, context));
+        DORIS_CHECK_EQ(state.typed_dictionary->size(), source.dictionary_size());
+        state.dictionary_generation = source.dictionary_generation();
+    }
+    return state.materialize_dictionary(column, source, num_values);
+}
+
+template <typename ColumnType>
 Status DataTypeStringSerDeBase<ColumnType>::write_column_to_orc(
         const std::string& timezone, const IColumn& column, const NullMap* null_map,
         orc::ColumnVectorBatch* orc_col_batch, int64_t start, int64_t end, Arena& arena,
@@ -656,6 +855,20 @@ Status DataTypeStringSerDeBase<ColumnType>::from_olap_string(const std::string& 
     size_t len = strnlen(str.data(), str.size());
     field = Field::create_field<TYPE_STRING>(std::string(str.data(), len));
     return Status::OK();
+}
+
+template <typename ColumnType>
+Status DataTypeStringSerDeBase<ColumnType>::read_column_from_orc(
+        IColumn& column, const OrcDecodedColumnView& view) const {
+    DORIS_CHECK(view.file_type != nullptr);
+    DORIS_CHECK(view.batch != nullptr);
+    const auto kind = view.file_type->getKind();
+    DORIS_CHECK(kind == ::orc::TypeKind::STRING || kind == ::orc::TypeKind::BINARY ||
+                kind == ::orc::TypeKind::VARCHAR || kind == ::orc::TypeKind::CHAR);
+    if (orc_serde_utils::orc_decode_row_count(view.rows, view.selected_rows) == 0) {
+        return Status::OK();
+    }
+    return decode_string_orc_values(*this, column, view);
 }
 
 template class DataTypeStringSerDeBase<ColumnString>;

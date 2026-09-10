@@ -529,4 +529,3 @@
 #include "common/config.h"
 #include "common/status.h"
 #include "common/version_internal.h"
-#include "storage/olap_common.h"

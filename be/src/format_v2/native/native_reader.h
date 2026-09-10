@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "format_v2/file_reader.h"
+#include "runtime/runtime_profile.h"
 
 namespace doris::format::native {
 
@@ -49,6 +50,7 @@ public:
     Status close() override;
 
 private:
+    void _init_profile() override;
     Status _validate_and_consume_header();
     Status _ensure_schema_loaded() const;
     Status _read_next_pblock(std::string* buffer, bool* eof) const;
@@ -65,6 +67,11 @@ private:
     mutable std::string _first_block_buffer;
     mutable bool _first_block_loaded = false;
     mutable bool _first_block_consumed = false;
+    RuntimeProfile::Counter* _total_time = nullptr;
+    RuntimeProfile::Counter* _read_block_time = nullptr;
+    RuntimeProfile::Counter* _deserialize_time = nullptr;
+    RuntimeProfile::Counter* _materialize_time = nullptr;
+    RuntimeProfile::Counter* _filter_time = nullptr;
 };
 
 } // namespace doris::format::native

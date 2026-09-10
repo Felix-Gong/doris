@@ -33,3 +33,8 @@ pch_reuse(Agent)
 if(ARCH_RISCV64)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zba")
 endif()
+
+# Unity build: nine homogeneous task-worker glue TUs sharing the agent header
+# closure; batch 0 merges them into a single unity TU.
+set_target_properties(Agent PROPERTIES UNITY_BUILD ${DORIS_UNITY_BUILD}
+                                       UNITY_BUILD_BATCH_SIZE 0)

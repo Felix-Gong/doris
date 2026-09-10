@@ -76,6 +76,7 @@
 #include "format_v2/timestamp_statistics.h"
 #include "io/fs/file_reader.h"
 #include "runtime/exec_env.h"
+#include "runtime/file_scan_profile.h"
 #include "runtime/runtime_profile.h"
 #include "storage/index/zone_map/zone_map_index.h"
 #include "storage/segment/condition_cache.h"
@@ -491,8 +492,8 @@ bool set_date_zone_map(const ::orc::ColumnStatistics& statistics, segment_v2::Zo
             Field::create_field<TYPE_DATEV2>(date_dict[date_statistics->getMaximum()]), zone_map);
 }
 
-DateV2Value<DateTimeV2ValueType> datetime_v2_from_orc_millis(int64_t millis, int32_t nanos_tail,
-                                                             const cctz::time_zone& timezone) {
+std::optional<DateV2Value<DateTimeV2ValueType>> datetime_v2_from_orc_millis(
+        int64_t millis, int32_t nanos_tail, const cctz::time_zone& timezone) {
     int64_t seconds = millis / 1000;
     int64_t millis_remainder = millis % 1000;
     if (millis_remainder < 0) {
@@ -500,16 +501,37 @@ DateV2Value<DateTimeV2ValueType> datetime_v2_from_orc_millis(int64_t millis, int
         millis_remainder += 1000;
     }
     const auto extra_nanos = std::max<int32_t>(nanos_tail, 0);
-    const auto microseconds = cast_set<uint64_t>(millis_remainder * 1000 + extra_nanos / 1000);
+    constexpr int64_t NANOS_PER_MICROSECOND = 1000;
+    constexpr int64_t MICROS_PER_SECOND = 1000000;
+    // Stripe statistics split the timestamp into milliseconds and the remaining nanoseconds. Use
+    // the same half-up rule as row decoding so zone-map pruning observes identical values.
+    const auto rounded_extra_microseconds =
+            (extra_nanos + NANOS_PER_MICROSECOND / 2) / NANOS_PER_MICROSECOND;
+    const auto microseconds_with_carry = millis_remainder * 1000 + rounded_extra_microseconds;
+    // Calendar bounds depend on the target timezone, so only reject arithmetic overflow here and
+    // let the converted value below decide whether the statistic is representable by Doris.
+    int64_t rounded_seconds;
+    if (__builtin_add_overflow(seconds, microseconds_with_carry / MICROS_PER_SECOND,
+                               &rounded_seconds)) {
+        return std::nullopt;
+    }
+    const auto microseconds = cast_set<uint64_t>(microseconds_with_carry % MICROS_PER_SECOND);
     DateV2Value<DateTimeV2ValueType> value;
-    value.from_unixtime(seconds, timezone);
+    value.from_unixtime(rounded_seconds, timezone);
     value.set_microsecond(microseconds);
+    if (!value.is_valid_date()) {
+        return std::nullopt;
+    }
     return value;
 }
 
-TimestampTzValue timestamp_tz_from_orc_millis(int64_t millis, int32_t nanos_tail) {
+std::optional<TimestampTzValue> timestamp_tz_from_orc_millis(int64_t millis, int32_t nanos_tail) {
     static const auto utc_time_zone = cctz::utc_time_zone();
-    return TimestampTzValue(datetime_v2_from_orc_millis(millis, nanos_tail, utc_time_zone));
+    auto value = datetime_v2_from_orc_millis(millis, nanos_tail, utc_time_zone);
+    if (!value.has_value()) {
+        return std::nullopt;
+    }
+    return TimestampTzValue(*value);
 }
 
 bool set_timestamp_zone_map(const ::orc::ColumnStatistics& statistics,
@@ -529,27 +551,30 @@ bool set_timestamp_zone_map(const ::orc::ColumnStatistics& statistics,
         return false;
     }
     if (use_timestamp_tz) {
-        return set_validated_zone_map(
-                Field::create_field<TYPE_TIMESTAMPTZ>(
-                        timestamp_tz_from_orc_millis(timestamp_statistics->getMinimum(),
-                                                     timestamp_statistics->getMinimumNanos())),
-                Field::create_field<TYPE_TIMESTAMPTZ>(
-                        timestamp_tz_from_orc_millis(timestamp_statistics->getMaximum(),
-                                                     timestamp_statistics->getMaximumNanos())),
-                zone_map);
+        auto min_value = timestamp_tz_from_orc_millis(timestamp_statistics->getMinimum(),
+                                                      timestamp_statistics->getMinimumNanos());
+        auto max_value = timestamp_tz_from_orc_millis(timestamp_statistics->getMaximum(),
+                                                      timestamp_statistics->getMaximumNanos());
+        if (!min_value.has_value() || !max_value.has_value()) {
+            return false;
+        }
+        return set_validated_zone_map(Field::create_field<TYPE_TIMESTAMPTZ>(*min_value),
+                                      Field::create_field<TYPE_TIMESTAMPTZ>(*max_value), zone_map);
     }
     if (!format::utc_timestamp_range_is_monotonic(
                 format::floor_epoch_seconds(timestamp_statistics->getMinimum(), 1000),
                 format::floor_epoch_seconds(timestamp_statistics->getMaximum(), 1000), timezone)) {
         return false;
     }
-    return set_validated_zone_map(Field::create_field<TYPE_DATETIMEV2>(datetime_v2_from_orc_millis(
-                                          timestamp_statistics->getMinimum(),
-                                          timestamp_statistics->getMinimumNanos(), timezone)),
-                                  Field::create_field<TYPE_DATETIMEV2>(datetime_v2_from_orc_millis(
-                                          timestamp_statistics->getMaximum(),
-                                          timestamp_statistics->getMaximumNanos(), timezone)),
-                                  zone_map);
+    auto min_value = datetime_v2_from_orc_millis(timestamp_statistics->getMinimum(),
+                                                 timestamp_statistics->getMinimumNanos(), timezone);
+    auto max_value = datetime_v2_from_orc_millis(timestamp_statistics->getMaximum(),
+                                                 timestamp_statistics->getMaximumNanos(), timezone);
+    if (!min_value.has_value() || !max_value.has_value()) {
+        return false;
+    }
+    return set_validated_zone_map(Field::create_field<TYPE_DATETIMEV2>(*min_value),
+                                  Field::create_field<TYPE_DATETIMEV2>(*max_value), zone_map);
 }
 
 int32_t decimal_scale_for_orc_type(const ::orc::Type& type) {
@@ -776,7 +801,9 @@ void OrcReader::_init_profile() {
     }
 
     static const char* orc_profile = "OrcReader";
-    ADD_TIMER_WITH_LEVEL(_profile, orc_profile, 1);
+    file_scan_profile::ensure_hierarchy(_profile);
+    _orc_profile.total_time =
+            ADD_CHILD_TIMER_WITH_LEVEL(_profile, orc_profile, file_scan_profile::FILE_READER, 1);
     _orc_profile.reader_call =
             ADD_CHILD_COUNTER_WITH_LEVEL(_profile, "ReaderCall", TUnit::UNIT, orc_profile, 1);
     _orc_profile.reader_inclusive_latency_us = ADD_CHILD_COUNTER_WITH_LEVEL(
@@ -803,20 +830,22 @@ void OrcReader::_init_profile() {
             _profile, "EvaluatedRowGroupCount", TUnit::UNIT, orc_profile, 1);
     _orc_profile.read_row_count =
             ADD_CHILD_COUNTER_WITH_LEVEL(_profile, "ReadRowCount", TUnit::UNIT, orc_profile, 1);
-    _orc_profile.filtered_row_groups = ADD_CHILD_COUNTER_WITH_LEVEL(_profile, "RowGroupsFiltered",
-                                                                    TUnit::UNIT, orc_profile, 1);
+    // RuntimeProfile counter names are flat; format-qualified names keep ORC ownership stable when
+    // one scan profile also initializes Parquet counters in either order.
+    _orc_profile.filtered_row_groups = ADD_CHILD_COUNTER_WITH_LEVEL(
+            _profile, "OrcRowGroupsFiltered", TUnit::UNIT, orc_profile, 1);
     _orc_profile.filtered_row_groups_by_min_max = ADD_CHILD_COUNTER_WITH_LEVEL(
-            _profile, "RowGroupsFilteredByMinMax", TUnit::UNIT, orc_profile, 1);
-    _orc_profile.read_row_groups =
-            ADD_CHILD_COUNTER_WITH_LEVEL(_profile, "RowGroupsReadNum", TUnit::UNIT, orc_profile, 1);
-    _orc_profile.filtered_group_rows = ADD_CHILD_COUNTER_WITH_LEVEL(_profile, "FilteredRowsByGroup",
-                                                                    TUnit::UNIT, orc_profile, 1);
+            _profile, "OrcRowGroupsFilteredByMinMax", TUnit::UNIT, orc_profile, 1);
+    _orc_profile.read_row_groups = ADD_CHILD_COUNTER_WITH_LEVEL(_profile, "OrcRowGroupsReadNum",
+                                                                TUnit::UNIT, orc_profile, 1);
+    _orc_profile.filtered_group_rows = ADD_CHILD_COUNTER_WITH_LEVEL(
+            _profile, "OrcFilteredRowsByGroup", TUnit::UNIT, orc_profile, 1);
     _orc_profile.lazy_read_filtered_rows = ADD_CHILD_COUNTER_WITH_LEVEL(
-            _profile, "FilteredRowsByLazyRead", TUnit::UNIT, orc_profile, 1);
-    _orc_profile.filtered_bytes =
-            ADD_CHILD_COUNTER_WITH_LEVEL(_profile, "FilteredBytes", TUnit::BYTES, orc_profile, 1);
+            _profile, "OrcFilteredRowsByLazyRead", TUnit::UNIT, orc_profile, 1);
+    _orc_profile.filtered_bytes = ADD_CHILD_COUNTER_WITH_LEVEL(_profile, "OrcFilteredBytes",
+                                                               TUnit::BYTES, orc_profile, 1);
     _orc_profile.open_file_num =
-            ADD_CHILD_COUNTER_WITH_LEVEL(_profile, "FileNum", TUnit::UNIT, orc_profile, 1);
+            ADD_CHILD_COUNTER_WITH_LEVEL(_profile, "OrcFileNum", TUnit::UNIT, orc_profile, 1);
 }
 
 void OrcReader::_collect_profile() const {
@@ -874,6 +903,8 @@ format::ColumnDefinition OrcReader::row_position_column_definition() {
 }
 
 Status OrcReader::init(RuntimeState* state) {
+    _init_profile();
+    SCOPED_TIMER(_orc_profile.total_time);
     RETURN_IF_ERROR(format::FileReader::init(state));
     _state = std::make_unique<OrcReaderScanState>();
     TimezoneUtils::find_cctz_time_zone(_state->timezone, _state->timezone_obj);
@@ -1162,6 +1193,7 @@ Status OrcReader::_fill_map_schema_children(const ::orc::Type& type,
 }
 
 Status OrcReader::get_schema(std::vector<format::ColumnDefinition>* const file_schema) const {
+    SCOPED_TIMER(_orc_profile.total_time);
     if (file_schema == nullptr) {
         return Status::InvalidArgument("file_schema is null");
     }
@@ -1195,6 +1227,7 @@ std::unique_ptr<format::TableColumnMapper> OrcReader::create_column_mapper(
 }
 
 Status OrcReader::open(std::shared_ptr<format::FileScanRequest> request) {
+    SCOPED_TIMER(_orc_profile.total_time);
     if (_state == nullptr || _state->reader == nullptr || _state->root_type == nullptr) {
         return Status::Uninitialized("OrcReader is not open");
     }
@@ -1371,7 +1404,9 @@ Status OrcReader::_configure_row_reader_projection() {
 }
 
 Status OrcReader::_init_search_argument_from_local_filters() {
-    if (!_state->enable_filter_by_min_max || _request->conjuncts.empty()) {
+    const size_t safe_count =
+            std::min(_request->metadata_pruning_safe_conjunct_count, _request->conjuncts.size());
+    if (!_state->enable_filter_by_min_max || safe_count == 0) {
         return Status::OK();
     }
 
@@ -1379,7 +1414,10 @@ Status OrcReader::_init_search_argument_from_local_filters() {
         auto builder = ::orc::SearchArgumentFactory::newBuilder();
         bool has_pushdown = false;
         builder->startAnd();
-        for (const auto& conjunct : _request->conjuncts) {
+        // ORC may omit unsupported expressions from a SARG, so a later predicate must not cross
+        // an earlier error-preserving barrier.
+        for (size_t i = 0; i < safe_count; ++i) {
+            const auto& conjunct = _request->conjuncts[i];
             if (conjunct == nullptr) {
                 continue;
             }
@@ -1713,6 +1751,8 @@ void OrcReader::_skip_condition_cache_false_granules(size_t* rows, bool* eof) {
     }
     if (target_row > _state->condition_cache_next_row) {
         DORIS_CHECK(target_row <= file_total_rows);
+        DBUG_EXECUTE_IF("OrcReader._skip_condition_cache_false_granules.before_seek_to_row",
+                        DBUG_RUN_CALLBACK());
         _state->row_reader->seekToRow(target_row);
         if (_io_ctx != nullptr) {
             _io_ctx->condition_cache_filtered_rows += target_row - _state->condition_cache_next_row;
@@ -1877,6 +1917,7 @@ Status OrcReader::_decode_column(const ::orc::Type& file_type, const ::orc::Type
 }
 
 Status OrcReader::get_block(Block* file_block, size_t* rows, bool* eof) {
+    SCOPED_TIMER(_orc_profile.total_time);
     DORIS_CHECK(file_block != nullptr);
     DORIS_CHECK(rows != nullptr);
     DORIS_CHECK(eof != nullptr);
@@ -1900,11 +1941,13 @@ Status OrcReader::get_block(Block* file_block, size_t* rows, bool* eof) {
 
     bool has_next = false;
     while (true) {
-        _skip_condition_cache_false_granules(rows, eof);
-        if (*eof) {
-            return Status::OK();
-        }
         try {
+            // Condition-cache seeks can perform I/O, so keep them in the same cancellation
+            // boundary as next().
+            _skip_condition_cache_false_granules(rows, eof);
+            if (*eof) {
+                return Status::OK();
+            }
             _state->orc_lazy_selection_valid = false;
             _state->orc_lazy_selected_rows.clear();
             _state->orc_lazy_input_rows = 0;
@@ -1990,7 +2033,13 @@ Status OrcReader::get_block(Block* file_block, size_t* rows, bool* eof) {
         }
         _state->orc_lazy_selection_valid = false;
     } else {
-        RETURN_IF_ERROR(_filter_block(file_block, rows));
+        auto filter_status = _filter_block(file_block, rows);
+        if (!filter_status.ok()) {
+            // V2 evaluates residual predicates after ORC returns the batch, while callers retain
+            // the historical nextBatch error contract used to identify row-filter failures.
+            filter_status.prepend("Orc row reader nextBatch failed. reason = ");
+            return filter_status;
+        }
     }
     *eof = false;
     return Status::OK();
@@ -2000,6 +2049,7 @@ Status OrcReader::get_block(Block* file_block, size_t* rows, bool* eof) {
 // NOLINTNEXTLINE(readability-function-size)
 Status OrcReader::get_aggregate_result(const format::FileAggregateRequest& request,
                                        format::FileAggregateResult* result) {
+    SCOPED_TIMER(_orc_profile.total_time);
     DORIS_CHECK(result != nullptr);
     if (_state == nullptr || _state->reader == nullptr || _state->root_type == nullptr) {
         return Status::Uninitialized("OrcReader is not open");
@@ -2110,6 +2160,16 @@ Status OrcReader::get_aggregate_result(const format::FileAggregateRequest& reque
             _state->reader->getWriterVersion() < ::orc::WriterVersion_ORC_135) {
             return Status::NotSupported(
                     "ORC TIMESTAMP min/max statistics are unsafe before writer version ORC-135");
+        }
+        if (leaf_type->getKind() == ::orc::TypeKind::TIMESTAMP_INSTANT &&
+            !_enable_mapping_timestamp_tz) {
+            // Raw timestamp order does not preserve local DATETIMEV2 order across a DST fold.
+            int32_t fixed_offset_seconds = 0;
+            if (!TimezoneUtils::try_get_fixed_offset_seconds(_state->timezone_obj,
+                                                             &fixed_offset_seconds)) {
+                return Status::NotSupported(
+                        "ORC timestamp min/max pushdown requires a fixed-offset timezone");
+            }
         }
 
         auto& aggregate_column = result->columns[column_idx];
@@ -2455,6 +2515,7 @@ void OrcReader::_filter_requested_columns(Block* file_block, const IColumn::Filt
 }
 
 Status OrcReader::close() {
+    SCOPED_TIMER(_orc_profile.total_time);
     _collect_profile();
     if (_state != nullptr) {
         _state = std::make_unique<OrcReaderScanState>();

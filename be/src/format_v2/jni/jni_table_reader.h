@@ -48,6 +48,7 @@ public:
 
     Status init(TableReadOptions&& options) override;
     Status prepare_split(const SplitReadOptions& options) override;
+    Status refresh_conjuncts(VExprContextSPtrs conjuncts) override;
     Status get_block(Block* block, bool* eos) override;
     Status abort_split() override;
     Status close() override;
@@ -81,9 +82,11 @@ protected:
     virtual Status _close_jni_scanner();
     virtual Status _set_open_scanner_batch_size(size_t batch_size);
     virtual bool supports_batch_size_update_after_open() const { return true; }
+    virtual bool publishes_encoded_schema() const { return false; }
     virtual Status _open_jni_scanner();
     bool _reserve_split_profile_publication();
     const std::vector<JniColumn>& jni_columns() const { return _jni_columns; }
+    RuntimeProfile::Counter* connector_total_timer() const { return _connector_total_time; }
     TFileRangeDesc _current_range;
 
 private:
@@ -93,6 +96,7 @@ private:
     // open
     void _reset_split_state(JNIEnv* env);
     void _prepare_jni_scanner_schema();
+    void _apply_common_scanner_params();
     Status _register_jni_class_functions_once(JNIEnv* env);
     Status _create_jni_scanner_object(JNIEnv* env, int batch_size);
     // get_next
@@ -110,6 +114,7 @@ private:
     bool _eof = false;
     bool _split_profile_published = false;
 
+    RuntimeProfile::Counter* _connector_total_time = nullptr;
     RuntimeProfile::Counter* _open_scanner_time = nullptr;
     RuntimeProfile::Counter* _java_scan_time = nullptr;
     RuntimeProfile::Counter* _java_append_data_time = nullptr;

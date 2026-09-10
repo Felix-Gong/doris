@@ -22,9 +22,11 @@ import org.apache.doris.cdcclient.service.PipelineCoordinator;
 import org.apache.doris.cdcclient.source.reader.AbstractCdcSourceReader;
 import org.apache.doris.cdcclient.source.reader.SourceReader;
 import org.apache.doris.job.cdc.DataSourceConfigKeys;
+import org.apache.doris.job.cdc.request.FetchEndOffsetRequest;
 import org.apache.doris.job.cdc.request.FetchTableSplitsRequest;
 import org.apache.doris.job.cdc.request.JobBaseConfig;
 import org.apache.doris.job.cdc.request.WriteRecordRequest;
+import org.apache.doris.job.cdc.response.FetchEndOffsetResult;
 import org.apache.doris.job.cdc.split.AbstractSourceSplit;
 import org.apache.doris.job.cdc.split.BinlogSplit;
 import org.apache.doris.job.cdc.split.SnapshotSplit;
@@ -94,6 +96,57 @@ final class CdcClientWriteHarness implements AutoCloseable {
             String offset,
             String targetDb,
             MockDorisServer mock) {
+        return mysqlCompatible(
+                jobId,
+                "MYSQL",
+                host,
+                port,
+                user,
+                password,
+                database,
+                includeTables,
+                offset,
+                targetDb,
+                mock);
+    }
+
+    static CdcClientWriteHarness oceanbase(
+            String jobId,
+            String host,
+            int port,
+            String user,
+            String password,
+            String database,
+            String includeTables,
+            String offset,
+            String targetDb,
+            MockDorisServer mock) {
+        return mysqlCompatible(
+                jobId,
+                "OCEANBASE",
+                host,
+                port,
+                user,
+                password,
+                database,
+                includeTables,
+                offset,
+                targetDb,
+                mock);
+    }
+
+    private static CdcClientWriteHarness mysqlCompatible(
+            String jobId,
+            String dataSource,
+            String host,
+            int port,
+            String user,
+            String password,
+            String database,
+            String includeTables,
+            String offset,
+            String targetDb,
+            MockDorisServer mock) {
         Map<String, String> config = new HashMap<>();
         config.put(
                 DataSourceConfigKeys.JDBC_URL,
@@ -108,7 +161,7 @@ final class CdcClientWriteHarness implements AutoCloseable {
         // Point cdc_client's stream-load at the mock BE.
         Env.getCurrentEnv().setBackendHttpPort(mock.port());
         Env.getCurrentEnv().setClusterToken("test");
-        return new CdcClientWriteHarness(jobId, "MYSQL", config, targetDb, mock);
+        return new CdcClientWriteHarness(jobId, dataSource, config, targetDb, mock);
     }
 
     static CdcClientWriteHarness postgres(
@@ -420,6 +473,15 @@ final class CdcClientWriteHarness implements AutoCloseable {
 
     String committedTableSchemas() {
         return lastTableSchemas;
+    }
+
+    long sourceLogLagBytes() throws Exception {
+        Map<String, String> referenceOffset = committedBinlogOffset();
+        FetchEndOffsetRequest request =
+                new FetchEndOffsetRequest(jobId, dataSource, config, null, referenceOffset);
+        SourceReader reader = openReader();
+        FetchEndOffsetResult result = reader.fetchEndOffset(request);
+        return result.getLagBytes();
     }
 
     @Override

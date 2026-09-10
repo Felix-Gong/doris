@@ -24,6 +24,7 @@
 #include "core/block/block.h"
 #include "exprs/vexpr_context.h"
 #include "runtime/descriptors.h"
+#include "runtime/file_scan_profile.h"
 #include "runtime/runtime_state.h"
 #include "util/string_util.h"
 
@@ -31,17 +32,31 @@ namespace doris::format {
 
 Status JniTableReader::init(TableReadOptions&& options) {
     RETURN_IF_ERROR(TableReader::init(std::move(options)));
-    _init_profile();
+    {
+        // Base and derived scopes must not overlap on the same counter: RuntimeProfile timers add
+        // deltas, so nested use would double-count instead of extending lifecycle coverage.
+        SCOPED_TIMER(_profile.total_timer);
+        SCOPED_TIMER(_profile.init_timer);
+        _init_profile();
+    }
+    SCOPED_TIMER(_connector_total_time);
     return Status::OK();
 }
 
 Status JniTableReader::prepare_split(const SplitReadOptions& options) {
-    // EOF belongs to the previous split. Keep it set after closing that split so repeated reads
-    // are idempotent, and clear it only when a new split is explicitly prepared.
-    _eof = false;
-    _current_range = options.current_range;
-    RETURN_IF_ERROR(validate_scan_range(options.current_range));
+    SCOPED_TIMER(_connector_total_time);
+    {
+        SCOPED_TIMER(_profile.total_timer);
+        SCOPED_TIMER(_profile.prepare_split_timer);
+        // EOF belongs to the previous split. Keep it set after closing that split so repeated reads
+        // are idempotent, and clear it only when a new split is explicitly prepared.
+        _eof = false;
+        _current_range = options.current_range;
+        RETURN_IF_ERROR(validate_scan_range(options.current_range));
+    }
     RETURN_IF_ERROR(TableReader::prepare_split(options));
+    SCOPED_TIMER(_profile.total_timer);
+    SCOPED_TIMER(_profile.prepare_split_timer);
     if (current_split_pruned()) {
         return Status::OK();
     }
@@ -62,7 +77,27 @@ Status JniTableReader::prepare_split(const SplitReadOptions& options) {
     return _open_jni_scanner();
 }
 
+Status JniTableReader::refresh_conjuncts(VExprContextSPtrs conjuncts) {
+    if (_scanner_opened) {
+        SCOPED_TIMER(_profile.total_timer);
+        SCOPED_TIMER(_profile.refresh_conjuncts_timer);
+        SCOPED_TIMER(_profile.file_reader_total_timer);
+        SCOPED_TIMER(_profile.file_reader_refresh_timer);
+        RowDescriptor row_desc;
+        for (const auto& conjunct : conjuncts) {
+            // JNI readers bypass TableReader::open_reader(), so a late predicate would otherwise
+            // replace the active snapshot without initializing its executable function state.
+            RETURN_IF_ERROR(conjunct->prepare(_runtime_state, row_desc));
+            RETURN_IF_ERROR(conjunct->open(_runtime_state));
+        }
+    }
+    return TableReader::refresh_conjuncts(std::move(conjuncts));
+}
+
 Status JniTableReader::get_block(Block* output_block, bool* eos) {
+    SCOPED_TIMER(_profile.total_timer);
+    SCOPED_TIMER(_profile.exec_timer);
+    SCOPED_TIMER(_connector_total_time);
     DORIS_CHECK(output_block != nullptr);
     DORIS_CHECK(eos != nullptr);
     DORIS_CHECK(output_block->columns() == _projected_columns.size());
@@ -109,7 +144,11 @@ Status JniTableReader::get_block(Block* output_block, bool* eos) {
 }
 
 Status JniTableReader::abort_split() {
-    RETURN_IF_ERROR(_close_jni_scanner());
+    {
+        SCOPED_TIMER(_profile.total_timer);
+        SCOPED_TIMER(_profile.close_timer);
+        RETURN_IF_ERROR(_close_jni_scanner());
+    }
     return TableReader::abort_split();
 }
 
@@ -342,10 +381,16 @@ void JniTableReader::_publish_split_profile(JNIEnv* env) {
 }
 
 Status JniTableReader::close() {
+    SCOPED_TIMER(_connector_total_time);
     if (_closed) {
         return Status::OK();
     }
-    auto close_status = _close_jni_scanner();
+    Status close_status;
+    {
+        SCOPED_TIMER(_profile.total_timer);
+        SCOPED_TIMER(_profile.close_timer);
+        close_status = _close_jni_scanner();
+    }
     auto table_status = TableReader::close();
     if (close_status.ok() && !table_status.ok()) {
         close_status = std::move(table_status);
@@ -411,9 +456,7 @@ Status JniTableReader::_open_jni_scanner() {
     if (_runtime_state != nullptr && _batch_size == 0) {
         _batch_size = _runtime_state->batch_size();
     }
-    if (_runtime_state != nullptr) {
-        _scanner_params["time_zone"] = _runtime_state->timezone();
-    }
+    _apply_common_scanner_params();
 
     JNIEnv* env = nullptr;
     RETURN_IF_ERROR(Jni::Env::Get(&env));
@@ -435,11 +478,25 @@ Status JniTableReader::_open_jni_scanner() {
     return Status::OK();
 }
 
+void JniTableReader::_apply_common_scanner_params() {
+    if (_runtime_state != nullptr) {
+        // time_zone is query-scoped: overwrite copied catalog properties so JNI materialization
+        // and predicate evaluation always use the same session timezone.
+        _scanner_params["time_zone"] = _runtime_state->timezone();
+    }
+}
+
 void JniTableReader::set_batch_size(size_t batch_size) {
-    if (_scanner_opened && !supports_batch_size_update_after_open()) {
-        // Some connectors bake the constructor batch size into an already-open physical reader.
-        // Keep C++ and Java on that initial size instead of pretending a later resize took effect.
-        return;
+    if (!supports_batch_size_update_after_open()) {
+        if (_scanner_opened) {
+            return;
+        }
+        // Constructor-frozen readers must open with the stable query batch size; a transient
+        // adaptive probe would otherwise remain their physical batch size for the whole split.
+        if (_runtime_state != nullptr) {
+            TableReader::set_batch_size(_runtime_state->batch_size());
+            return;
+        }
     }
     TableReader::set_batch_size(batch_size);
     if (!_scanner_opened) {
@@ -462,11 +519,16 @@ Status JniTableReader::_set_open_scanner_batch_size(size_t batch_size) {
 }
 
 void JniTableReader::_prepare_jni_scanner_schema() {
+    const bool publish_encoded_schema = publishes_encoded_schema();
     std::vector<std::string> required_fields;
     std::vector<std::string> column_types;
+    std::vector<std::string> encoded_column_types;
     std::vector<std::string> replace_types;
     required_fields.reserve(_jni_columns.size());
     column_types.reserve(_jni_columns.size());
+    if (publish_encoded_schema) {
+        encoded_column_types.reserve(_jni_columns.size());
+    }
     replace_types.reserve(_jni_columns.size());
     _jni_block_template.clear();
     _jni_block_template.reserve(_jni_columns.size());
@@ -477,6 +539,10 @@ void JniTableReader::_prepare_jni_scanner_schema() {
         required_fields.push_back(column.java_name);
         column_types.push_back(
                 JniDataBridge::get_jni_type_with_different_string(column.transfer_type));
+        if (publish_encoded_schema) {
+            encoded_column_types.push_back(
+                    JniDataBridge::get_jni_type_with_encoded_struct_fields(column.transfer_type));
+        }
         replace_types.push_back(column.replace_type);
         has_replace_type = has_replace_type || column.replace_type != "not_replace";
         _jni_block_template.insert(
@@ -484,6 +550,14 @@ void JniTableReader::_prepare_jni_scanner_schema() {
     }
     _scanner_params["required_fields"] = join(required_fields, ",");
     _scanner_params["columns_types"] = join(column_types, "#");
+    if (publish_encoded_schema) {
+        // Only Paimon consumes the paired payload. Keeping it capability-gated avoids recursively
+        // encoding nested types for every split of unrelated V2 JNI connectors.
+        _scanner_params["required_fields_base64"] =
+                JniDataBridge::encode_schema_values(required_fields);
+        _scanner_params["columns_types_base64"] =
+                JniDataBridge::encode_schema_values(encoded_column_types);
+    }
     if (has_replace_type) {
         _scanner_params["replace_string"] = join(replace_types, ",");
     }
@@ -535,7 +609,9 @@ void JniTableReader::_init_profile() {
         return;
     }
     const auto connector_name = _connector_name();
-    ADD_TIMER(_scanner_profile, connector_name);
+    file_scan_profile::ensure_hierarchy(_scanner_profile);
+    _connector_total_time =
+            ADD_CHILD_TIMER(_scanner_profile, connector_name, file_scan_profile::TABLE_READER);
     _open_scanner_time = ADD_CHILD_TIMER(_scanner_profile, "OpenScannerTime", connector_name);
     _java_scan_time = ADD_CHILD_TIMER(_scanner_profile, "JavaScanTime", connector_name);
     _java_append_data_time =

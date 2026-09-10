@@ -21,7 +21,7 @@
 fe/fe-core/src/main/java/org/apache/doris/catalog/Env.java @dataroaring @CalvinKirs @morningman
 **/pom.xml @CalvinKirs @morningman
 fe/fe-common/src/main/java/org/apache/doris/common/FeMetaVersion.java @dataroaring @morningman @yiguolei @xiaokang
-fe/fe-core/src/main/java/org/apache/doris/fs @CalvinKirs
+fe/fe-core/src/main/java/org/apache/doris/fs @CalvinKirs @924060929
 fe/fe-core/src/main/java/org/apache/doris/fsv2 @CalvinKirs
 be/src/olap/rowset/segment_v2/variant @eldenmoon @csun5285
 be/src/storage/index/inverted/ @airborne12 @eldenmoon @csun5285
@@ -45,7 +45,7 @@ be/src/load/group_commit                                     @liaoxin01 @gavinch
 be/src/load/memtable                                         @liaoxin01 @gavinchou
 be/src/load/routine_load                                     @liaoxin01 @gavinchou
 be/src/load/stream_load                                      @liaoxin01 @gavinchou
-be/src/storage                                               @gavinchou
+be/src/storage                                               @gavinchou @yiguolei
 be/src/storage/olap_common.h                                 @gavinchou @yiguolei
 be/src/storage/cache                                         @liaoxin01 @gavinchou
 be/src/storage/compaction                                    @luwei16 @gavinchou
@@ -53,11 +53,11 @@ be/src/storage/delete                                        @luwei16 @gavinchou
 be/src/storage/index                                         @airborne12 @eldenmoon @csun5285
 be/src/storage/iterator                                      @yiguolei @gavinchou
 be/src/storage/predicate                                     @yiguolei @gavinchou
-be/src/storage/rowset                                        @gavinchou
+be/src/storage/rowset                                        @gavinchou @yiguolei
 be/src/storage/schema_change                                 @luwei16 @gavinchou
 be/src/storage/segment                                       @yiguolei @liaoxin01 @gavinchou @eldenmoon @csun5285 @airborne12
 be/src/storage/snapshot                                      @deardeng @luwei16 @gavinchou
-be/src/storage/tablet                                        @gavinchou
+be/src/storage/tablet                                        @gavinchou @yiguolei
 be/src/storage/task                                          @deardeng @gavinchou
 be/src/storage/txn                                           @liaoxin01 @gavinchou
 be/test/cloud                                                @luwei16 @liaoxin01 @gavinchou
@@ -70,19 +70,19 @@ be/test/load/channel                                         @liaoxin01 @gavinch
 be/test/load/delta_writer                                    @liaoxin01 @gavinchou
 be/test/load/memtable                                        @liaoxin01 @gavinchou
 be/test/olap                                                 @gavinchou
-be/test/olap/rowset                                          @gavinchou
-be/test/storage                                              @gavinchou
+be/test/olap/rowset                                          @gavinchou @yiguolei
+be/test/storage                                              @gavinchou @yiguolei
 be/test/storage/cache                                        @liaoxin01 @gavinchou
 be/test/storage/compaction                                   @luwei16 @gavinchou
 be/test/storage/delete                                       @gavinchou
 be/test/storage/index                                        @airborne12 @eldenmoon @csun5285
 be/test/storage/iterator                                     @yiguolei @gavinchou
 be/test/storage/predicate                                    @yiguolei @gavinchou
-be/test/storage/rowset                                       @gavinchou
+be/test/storage/rowset                                       @gavinchou @yiguolei
 be/test/storage/schema_change                                @luwei16 @gavinchou
 be/test/storage/segment                                      @yiguolei @gavinchou @eldenmoon @csun5285 @airborne12
 be/test/storage/snapshot                                     @deardeng @luwei16 @gavinchou
-be/test/storage/tablet                                       @gavinchou
+be/test/storage/tablet                                       @gavinchou @yiguolei
 be/test/storage/txn                                          @liaoxin01 @gavinchou
 fe/fe-core/src/main/java/org/apache/doris/alter              @luwei16 @gavinchou
 fe/fe-core/src/main/java/org/apache/doris/backup             @luwei16 @gavinchou
@@ -105,16 +105,21 @@ fe/fe-core/src/main/java/org/apache/doris/cloud/storage      @luwei16 @liaoxin01
 fe/fe-core/src/main/java/org/apache/doris/cloud/system       @deardeng @gavinchou
 fe/fe-core/src/main/java/org/apache/doris/cloud/transaction  @mymeiyi @liaoxin01 @gavinchou
 fe/fe-core/src/main/java/org/apache/doris/cooldown           @liaoxin01 @gavinchou
-fe/fe-core/src/main/java/org/apache/doris/fs                 @calvinkirs @morningman @liaoxin01 @gavinchou
+fe/fe-core/src/main/java/org/apache/doris/connector          @924060929 @CalvinKirs
+fe/fe-core/src/main/java/org/apache/doris/datasource         @924060929 @CalvinKirs
+fe/fe-core/src/main/java/org/apache/doris/fs                 @CalvinKirs @924060929 @morningman @liaoxin01 @gavinchou
 fe/fe-core/src/main/java/org/apache/doris/ha                 @mymeiyi @gavinchou
 fe/fe-core/src/main/java/org/apache/doris/journal            @mymeiyi @gavinchou
 fe/fe-core/src/main/java/org/apache/doris/load               @liaoxin01 @gavinchou
 fe/fe-core/src/main/java/org/apache/doris/master             @mymeiyi @deardeng @gavinchou
-fe/fe-core/src/main/java/org/apache/doris/mtmv               @morrySnow @seawinde
+fe/fe-core/src/main/java/org/apache/doris/mtmv               @morrySnow
 fe/fe-core/src/main/java/org/apache/doris/nereids            @morrySnow @924060929 @englefly @starocean999
 fe/fe-core/src/main/java/org/apache/doris/persist            @mymeiyi @gavinchou
 fe/fe-core/src/main/java/org/apache/doris/persist/gson       @mymeiyi @gavinchou
 fe/fe-core/src/main/java/org/apache/doris/persist/meta       @mymeiyi @gavinchou
+fe/fe-core/src/main/java/org/apache/doris/qe                 @morrySnow @924060929
+fe/fe-core/src/main/java/org/apache/doris/spi                @924060929 @CalvinKirs
+fe/fe-core/src/main/java/org/apache/doris/statistics         @morrySnow @englefly
 fe/fe-core/src/test/java/org/apache/doris/alter              @luwei16 @gavinchou
 fe/fe-core/src/test/java/org/apache/doris/backup             @luwei16 @gavinchou
 fe/fe-core/src/test/java/org/apache/doris/binlog             @luwei16 @gavinchou
@@ -131,10 +136,13 @@ fe/fe-core/src/test/java/org/apache/doris/cloud/stage        @liaoxin01 @gavinch
 fe/fe-core/src/test/java/org/apache/doris/cloud/storage      @liaoxin01 @gavinchou
 fe/fe-core/src/test/java/org/apache/doris/cloud/system       @deardeng @gavinchou
 fe/fe-core/src/test/java/org/apache/doris/cloud/transaction  @liaoxin01 @gavinchou
-fe/fe-core/src/test/java/org/apache/doris/fs                 @calvinkirs @morningman @gavinchou @Gabriel39
+fe/fe-core/src/test/java/org/apache/doris/connector          @924060929 @CalvinKirs
+fe/fe-core/src/test/java/org/apache/doris/datasource         @924060929 @CalvinKirs
+fe/fe-core/src/test/java/org/apache/doris/fs                 @CalvinKirs @924060929 @morningman @gavinchou @Gabriel39
 fe/fe-core/src/test/java/org/apache/doris/journal            @mymeiyi @gavinchou
 fe/fe-core/src/test/java/org/apache/doris/load               @liaoxin01 @gavinchou
-fe/fe-filesystem                                             @calvinkirs @morningman @gavinchou
+fe/fe-connector                                              @924060929 @CalvinKirs
+fe/fe-filesystem                                             @CalvinKirs @924060929 @morningman @gavinchou
 fe/fe-sql-parser/src/main/antlr4                             @morrySnow @starocean999 @924060929 @englefly
 cloud                                                        @gavinchou
 cloud/cmake                                                  @liaoxin01 @luwei16 @gavinchou
@@ -154,3 +162,5 @@ gensrc/proto/cloud.proto                                     @luwei16 @gavinchou
 gensrc/proto/file_cache.proto                                @liaoxin01 @gavinchou
 gensrc/proto/olap_file.proto                                 @yiguolei @liaoxin01 @gavinchou
 gensrc/proto/segment_v2.proto                                @yiguolei @liaoxin01 @gavinchou @eldenmoon @csun5285 @airborne12
+.github/workflows/                                           @hello-stephen @morningman @yiguolei
+thirdparty/                                                  @yiguolei @morningman

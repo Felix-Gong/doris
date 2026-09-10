@@ -26,6 +26,7 @@
 #include "core/string_ref.h"
 #include "core/types.h"
 #include "core/uint128.h"
+#include "core/value/timestamp_ns_value.h"
 #include "parallel_hashmap/phmap_utils.h"
 // REMOVED_DUPLICATE_Hash128to64 - software fallback for non-SSE platforms
 namespace doris {
@@ -131,6 +132,11 @@ struct DefaultHash<doris::DateV2Value<doris::DateV2ValueType>> {
 };
 
 template <>
+struct DefaultHash<doris::TimeStampNsValue> {
+    size_t operator()(doris::TimeStampNsValue key) const { return int_hash64(key.epoch_nanos()); }
+};
+
+template <>
 struct DefaultHash<doris::TimestampTzValue> {
     size_t operator()(doris::TimestampTzValue key) const {
         return int_hash64(key.to_date_int_val());
@@ -188,6 +194,11 @@ inline size_t hash_crc32(doris::DateV2Value<doris::DateV2ValueType> u) {
 }
 
 template <>
+inline size_t hash_crc32(doris::TimeStampNsValue u) {
+    return hash_crc32(u.epoch_nanos());
+}
+
+template <>
 inline size_t hash_crc32(doris::TimestampTzValue u) {
     return hash_crc32(u.to_date_int_val());
 }
@@ -215,6 +226,7 @@ DEFINE_HASH(doris::Float64)
 DEFINE_HASH(doris::VecDateTimeValue)
 DEFINE_HASH(doris::DateV2Value<doris::DateTimeV2ValueType>)
 DEFINE_HASH(doris::DateV2Value<doris::DateV2ValueType>)
+DEFINE_HASH(doris::TimeStampNsValue)
 DEFINE_HASH(doris::TimestampTzValue)
 DEFINE_HASH(unsigned __int128)
 

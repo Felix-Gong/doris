@@ -29,3 +29,13 @@ pch_reuse(Load)
 if(ARCH_RISCV64)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zba")
 endif()
+
+# Unity build: load channel/delta-writer/group-commit glue sharing one header
+# closure. Two files leak file-scope macros (UNKNOWN_ID_FOR_TEST,
+# HANDLE_ERROR/HANDLE_MULTI_TABLE_ERROR) and stay individual.
+set(LOAD_UNITY_SKIP
+    ${CMAKE_CURRENT_SOURCE_DIR}/channel/load_stream.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/routine_load/routine_load_task_executor.cpp)
+doris_skip_unity_inclusion(${LOAD_UNITY_SKIP})
+set_target_properties(Load PROPERTIES UNITY_BUILD ${DORIS_UNITY_BUILD}
+                                      UNITY_BUILD_BATCH_SIZE 12)
