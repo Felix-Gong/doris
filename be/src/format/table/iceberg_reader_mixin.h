@@ -115,8 +115,11 @@ public:
         _partition_data_json = partition_data_json;
     }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshadow"
     enum { DATA, POSITION_DELETE, EQUALITY_DELETE, DELETION_VECTOR };
     enum Fileformat { NONE, PARQUET, ORC, AVRO };
+#pragma clang diagnostic pop
 
     virtual void set_delete_rows() = 0;
     virtual void set_deletion_vector() = 0;

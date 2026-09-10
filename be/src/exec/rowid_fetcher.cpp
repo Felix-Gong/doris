@@ -770,13 +770,12 @@ Status RowIdStorageReader::read_batch_external_row(
                 //semaphore: Limit the number of scan tasks submitted at one time
                 std::counting_semaphore semaphore {max_file_scanners};
 
-                std::vector<std::pair<std::multimap<segment_v2::rowid_t, size_t>,
-                                      std::shared_ptr<FileMapping>>>
-                        scan_info_list;
-                scan_info_list.reserve(scan_rows.size());
-                for (const auto& [_, scan_info] : scan_rows) {
-                    scan_info_list.emplace_back(scan_info);
-                }
+        io::FileCacheMissPolicy file_cache_miss_policy, Block& result_block) {
+    // Explicit variables (not structured bindings) for OpenMP lambda capture compatibility
+    auto doris_format_info = file_mapping->get_doris_format_info();
+    auto tablet_id = std::get<0>(doris_format_info);
+    auto rowset_id = std::get<1>(doris_format_info);
+    auto segment_id = std::get<2>(doris_format_info);                }
 
                 return submit_external_scan_tasks(
                         remote_scan_sched, semaphore, scan_rows.size(),
@@ -887,8 +886,6 @@ Status RowIdStorageReader::read_doris_format_row(
         int64_t* acquire_tablet_ms, int64_t* acquire_rowsets_ms, int64_t* acquire_segments_ms,
         int64_t* lookup_row_data_ms, std::unordered_map<SegKey, SegItem, HashOfSegKey>& seg_map,
         std::unordered_map<IteratorKey, IteratorItem, HashOfIteratorKey>& iterator_map,
-        io::FileCacheMissPolicy file_cache_miss_policy, Block& result_block) {
-    auto [tablet_id, rowset_id, segment_id] = file_mapping->get_doris_format_info();
     SegKey seg_key {.tablet_id = tablet_id, .rowset_id = rowset_id, .segment_id = segment_id};
 
     BaseTabletSPtr tablet;

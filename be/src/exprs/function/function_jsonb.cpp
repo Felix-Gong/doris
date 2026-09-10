@@ -181,7 +181,7 @@ public:
 
     Status execute_impl(FunctionContext* context, Block& block, const ColumnNumbers& arguments,
                         uint32_t result, size_t input_rows_count) const override {
-        auto&& [col_from, col_from_is_const] =
+        ColumnPtr col_from; bool col_from_is_const; std::tie(col_from, col_from_is_const) =
                 unpack_if_const(block.get_by_position(arguments[0]).column);
 
         if (col_from_is_const && col_from->is_null_at(0)) {
@@ -2554,7 +2554,7 @@ public:
         CheckNullFun json_null_check = always_not_null;
         GetJsonStringRefFun get_json_fun;
         // prepare jsonb data column
-        auto&& [col_json, json_is_const] =
+        ColumnPtr col_json; bool json_is_const; std::tie(col_json, json_is_const) =
                 unpack_if_const(block.get_by_position(arguments[0]).column);
         const auto* col_json_string = check_and_get_column<ColumnString>(col_json.get());
         if (const auto* nullable = check_and_get_column<ColumnNullable>(col_json.get())) {
@@ -2595,7 +2595,7 @@ public:
         // one_or_all
         CheckNullFun one_null_check = always_not_null;
         OneFun one_check = always_one;
-        auto&& [col_one, one_is_const] =
+        ColumnPtr col_one; bool one_is_const; std::tie(col_one, one_is_const) =
                 unpack_if_const(block.get_by_position(arguments[1]).column);
         one_is_const |= input_rows_count == 1;
         const auto* col_one_string = check_and_get_column<ColumnString>(col_one.get());
@@ -2641,7 +2641,7 @@ public:
         }
 
         // search_str
-        auto&& [col_search, search_is_const] =
+        ColumnPtr col_search; bool search_is_const; std::tie(col_search, search_is_const) =
                 unpack_if_const(block.get_by_position(arguments[2]).column);
 
         const auto* col_search_string = check_and_get_column<ColumnString>(col_search.get());

@@ -61,10 +61,12 @@ public:
 
     Status execute_impl(FunctionContext* context, Block& block, const ColumnNumbers& arguments,
                         uint32_t result, size_t input_rows_count) const override {
-        const auto& [left_column, left_is_const] =
-                unpack_if_const(block.get_by_position(arguments[0]).column);
-        const auto& [right_column, right_is_const] =
-                unpack_if_const(block.get_by_position(arguments[1]).column);
+        auto left_unpacked = unpack_if_const(block.get_by_position(arguments[0]).column);
+        const auto& left_column = left_unpacked.first;
+        bool left_is_const = left_unpacked.second;
+        auto right_unpacked = unpack_if_const(block.get_by_position(arguments[1]).column);
+        const auto& right_column = right_unpacked.first;
+        bool right_is_const = right_unpacked.second;
         ColumnArrayExecutionData left_exec_data;
         ColumnArrayExecutionData right_exec_data;
 
