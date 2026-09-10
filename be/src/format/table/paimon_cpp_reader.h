@@ -29,14 +29,20 @@
 #include "cctz/time_zone.h"
 #include "common/status.h"
 #include "format/generic_reader.h"
+#if __has_include(<paimon/reader/batch_reader.h>)
 #include "paimon/reader/batch_reader.h"
 #include "paimon/table/source/split.h"
-#include "storage/olap_scan_common.h"
-
+#include "paimon/predicate/predicate.h"
+#include "paimon/table/source/table_read.h"
+#else
 namespace paimon {
+class Split;
+class BatchReader;
 class TableRead;
 class Predicate;
-} // namespace paimon
+}
+#endif
+#include "storage/olap_scan_common.h" // namespace paimon
 
 namespace doris {
 class RuntimeProfile;

@@ -27,6 +27,7 @@
 #include "cctz/time_zone.h"
 #include "core/data_type/define_primitive_type.h"
 #include "exprs/vexpr_fwd.h"
+#if __has_include(<paimon/defs.h>)
 #include "paimon/defs.h"
 #include "paimon/predicate/literal.h"
 
@@ -86,3 +87,5 @@ private:
 };
 
 } // namespace doris
+
+#endif

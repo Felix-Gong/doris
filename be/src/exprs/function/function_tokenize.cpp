@@ -25,7 +25,7 @@
 #include <memory>
 #include <utility>
 
-#include "CLucene/StdHeader.h"
+#include <CLucene.h>
 #include "CLucene/config/repl_wchar.h"
 #include "core/block/block.h"
 #include "core/block/column_with_type_and_name.h"
