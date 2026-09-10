@@ -50,8 +50,8 @@ Status NGramBloomFilter::init(const char* buf, size_t size, HashStrategyPB strat
 }
 
 void NGramBloomFilter::add_bytes(const char* data, size_t len) {
-    size_t hash1 = util_hash::CityHash64WithSeed(data, len, 0);
-    size_t hash2 = util_hash::CityHash64WithSeed(data, len, SEED_GEN);
+    size_t hash1 = ::doris::util_hash::CityHash64WithSeed(data, len, 0);
+    size_t hash2 = ::doris::util_hash::CityHash64WithSeed(data, len, SEED_GEN);
 
     for (size_t i = 0; i < HASH_FUNCTIONS; ++i) {
         size_t pos = (hash1 + i * hash2 + i * i) % (8 * _size);

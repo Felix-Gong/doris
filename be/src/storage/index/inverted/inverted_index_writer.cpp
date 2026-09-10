@@ -188,7 +188,7 @@ Status InvertedIndexColumnWriter<field_type>::create_field(lucene::document::Fie
             }
         })
         if (dict_compression == INVERTED_INDEX_PARSER_TRUE) {
-            (*field)->updateFlag(FlagBits::DICT_COMPRESS);
+            (*field)->updateFlag(lucene::document::FlagBits::DICT_COMPRESS);
         }
     }
     return Status::OK();

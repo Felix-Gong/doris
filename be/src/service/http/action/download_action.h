@@ -51,8 +51,8 @@ public:
 
 private:
     enum DOWNLOAD_TYPE {
-        NORMAL = 1,
-        ERROR_LOG = 2,
+        DOWNLOAD_NORMAL = 1,
+        DOWNLOAD_ERROR_LOG = 2,
     };
 
     Status check_token(HttpRequest* req);

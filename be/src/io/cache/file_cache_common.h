@@ -20,6 +20,7 @@
 
 #pragma once
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "common/config.h"
@@ -119,7 +120,7 @@ struct FileCacheAllocatorBuilder {
 
 struct KeyHash {
     std::size_t operator()(const UInt128Wrapper& w) const {
-        return util_hash::HashLen16(w.value_.low(), w.value_.high());
+        return ::doris::util_hash::HashLen16(w.value_.low(), w.value_.high());
     }
 };
 

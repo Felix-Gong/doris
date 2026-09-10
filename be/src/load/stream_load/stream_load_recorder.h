@@ -60,8 +60,8 @@ private:
     std::atomic<int64_t> _last_compaction_time;
 
     enum ColumnFamilyIndex {
-        DEFAULT_COLUMN_FAMILY_INDEX = 0,
-        META_COLUMN_FAMILY_INDEX = 1,
+        SL_DEFAULT_CF_INDEX = 0,
+        SL_META_CF_INDEX = 1,
     };
 
     const std::string DEFAULT_COLUMN_FAMILY = "default";

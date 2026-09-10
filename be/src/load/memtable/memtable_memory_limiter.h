@@ -84,7 +84,7 @@ private:
     int64_t _load_soft_mem_limit = -1;
     int64_t _load_safe_mem_permit = -1;
 
-    enum Limit { NONE, SOFT, HARD } _last_limit = Limit::NONE;
+    enum Limit { LIMIT_NONE, SOFT, HARD } _last_limit = Limit::LIMIT_NONE;
     MonotonicStopWatch _log_timer;
     static const int64_t LOG_INTERVAL = 1 * 1000 * 1000 * 1000; // 1s
 

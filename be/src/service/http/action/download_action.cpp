@@ -43,7 +43,6 @@ DownloadAction::DownloadAction(ExecEnv* exec_env,
                                std::shared_ptr<bufferevent_rate_limit_group> rate_limit_group,
                                const std::vector<std::string>& allow_dirs)
         : HttpHandlerWithAuth(exec_env),
-          _download_type(NORMAL),
           _rate_limit_group(std::move(rate_limit_group)) {
     for (const auto& dir : allow_dirs) {
         std::string p;
@@ -56,7 +55,6 @@ DownloadAction::DownloadAction(ExecEnv* exec_env,
 }
 
 DownloadAction::DownloadAction(ExecEnv* exec_env, const std::string& error_log_root_dir)
-        : HttpHandlerWithAuth(exec_env), _download_type(ERROR_LOG) {
 #ifndef BE_TEST
     static_cast<void>(
             io::global_local_filesystem()->canonicalize(error_log_root_dir, &_error_log_root_dir));
@@ -168,9 +166,9 @@ void DownloadAction::_handle(HttpRequest* req) {
         return;
     }
 
-    if (_download_type == ERROR_LOG) {
+    if (_download_type == DOWNLOAD_ERROR_LOG) {
         handle_error_log(req, file_path);
-    } else if (_download_type == NORMAL) {
+    } else if (_download_type == DOWNLOAD_NORMAL) {
         handle_normal(req, file_path);
     }
 
@@ -193,7 +191,7 @@ Status DownloadAction::check_token(HttpRequest* req) {
 }
 
 Status DownloadAction::check_path_is_allowed(const std::string& file_path) {
-    DCHECK_EQ(_download_type, NORMAL);
+    DCHECK_EQ(_download_type, DOWNLOAD_NORMAL);
 
     std::string canonical_file_path;
     RETURN_IF_ERROR(io::global_local_filesystem()->canonicalize(file_path, &canonical_file_path));
@@ -207,7 +205,7 @@ Status DownloadAction::check_path_is_allowed(const std::string& file_path) {
 }
 
 Status DownloadAction::check_log_path_is_allowed(const std::string& file_path) {
-    DCHECK_EQ(_download_type, ERROR_LOG);
+    DCHECK_EQ(_download_type, DOWNLOAD_ERROR_LOG);
 
     std::string canonical_file_path;
     RETURN_IF_ERROR(io::global_local_filesystem()->canonicalize(file_path, &canonical_file_path));
