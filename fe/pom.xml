@@ -214,11 +214,6 @@ under the License.
         </pluginManagement>
         <extensions>
             <extension>
-                <groupId>kr.motd.maven</groupId>
-                <artifactId>os-maven-plugin</artifactId>
-                <version>1.7.0</version>
-            </extension>
-            <extension>
                 <groupId>org.apache.maven.extensions</groupId>
                 <artifactId>maven-build-cache-extension</artifactId>
                 <version>1.2.2</version>
@@ -379,7 +374,7 @@ under the License.
         <commons-compress.version>1.27.1</commons-compress.version>
         <scala.version>2.12.10</scala.version>
         <kryo.version>4.0.2</kryo.version>
-        <lombok.version>1.18.24</lombok.version>
+        <lombok.version>1.18.34</lombok.version>
         <tree-printer.version>1.2</tree-printer.version>
         <hamcrest.version>2.1</hamcrest.version>
         <httpclient.version>4.5.13</httpclient.version>
@@ -472,6 +467,21 @@ under the License.
         <fastutil.version>8.5.18</fastutil.version>
     </properties>
     <profiles>
+        <profile>
+            <!-- RISC-V: os-maven-plugin 1.7.x has no riscv64 classifier artifacts. -->
+            <id>riscv64-env</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <arch>riscv64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.detected.arch>riscv64</os.detected.arch>
+                <os.detected.name>linux</os.detected.name>
+                <os.detected.version>6.12</os.detected.version>
+            </properties>
+        </profile>
         <profile>
             <!-- Keep benchmarks out of the default FE reactor and all published runtime jars. -->
             <id>benchmark</id>
