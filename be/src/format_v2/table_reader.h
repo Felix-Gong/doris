@@ -406,7 +406,9 @@ protected:
 
         // 4. Build file block layout from file schema and column mapping. The layout describes
         // the block returned by file reader before table-column materialization.
-        for (const auto& [file_column_id, block_position] : file_request->local_positions) {
+        for (const auto& local_position : file_request->local_positions) {
+            const auto& file_column_id = local_position.first;
+            const auto& block_position = local_position.second;
             DORIS_CHECK(block_position.value() < _data_reader.file_block_layout.size());
             const auto* field = _find_column_definition(_data_reader.file_schema, file_column_id);
             DORIS_CHECK(field != nullptr);

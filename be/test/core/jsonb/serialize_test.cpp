@@ -817,7 +817,7 @@ TEST(BlockSerializeTest, Bigstr) {
     col->insert_data(bigdata.data(), bigdata.length());
     try {
         s->get_uncompressed_serialized_bytes(*col, BeExecVersionManager::get_newest_version());
-    } catch (std::exception& e) {
+    } catch (std::exception&) {
         return;
     }
     assert(false);

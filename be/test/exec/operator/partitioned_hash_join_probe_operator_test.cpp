@@ -270,6 +270,7 @@ TEST_F(PartitionedHashJoinProbeOperatorTest, InitAndOpen) {
 
 TEST_F(PartitionedHashJoinProbeOperatorTest, CloseReleasesSpillResources) {
     auto [probe_operator, sink_operator] = _helper.create_operators();
+    auto* probe_operator_ptr = probe_operator.get();
 
     std::shared_ptr<MockPartitionedHashJoinSharedState> shared_state;
     auto local_state = _helper.create_probe_local_state(_helper.runtime_state.get(),
@@ -279,7 +280,7 @@ TEST_F(PartitionedHashJoinProbeOperatorTest, CloseReleasesSpillResources) {
                                  std::initializer_list<int32_t> values) -> SpillFileSPtr {
         SpillFileSPtr spill_file;
         auto relative_path = fmt::format("{}/{}-{}-{}", print_id(_helper.runtime_state->query_id()),
-                                         prefix, probe_operator->node_id(),
+                                         prefix, probe_operator_ptr->node_id(),
                                          ExecEnv::GetInstance()->spill_file_mgr()->next_id());
         auto st = ExecEnv::GetInstance()->spill_file_mgr()->create_spill_file(relative_path,
                                                                               spill_file);
@@ -415,6 +416,7 @@ TEST_F(PartitionedHashJoinProbeOperatorTest, CloseReturnsWriterCloseError) {
 
 TEST_F(PartitionedHashJoinProbeOperatorTest, RepartitionCurrentPartition) {
     auto [probe_operator, sink_operator] = _helper.create_operators();
+    auto* probe_operator_ptr = probe_operator.get();
 
     auto st = probe_operator->init(probe_operator->_tnode, _helper.runtime_state.get());
     ASSERT_TRUE(st.ok()) << "init failed: " << st.to_string();
@@ -438,7 +440,7 @@ TEST_F(PartitionedHashJoinProbeOperatorTest, RepartitionCurrentPartition) {
                 const std::vector<std::vector<int32_t>>& batches) -> SpillFileSPtr {
         SpillFileSPtr spill_file;
         auto relative_path = fmt::format("{}/{}-{}-{}", print_id(_helper.runtime_state->query_id()),
-                                         prefix, probe_operator->node_id(),
+                                         prefix, probe_operator_ptr->node_id(),
                                          ExecEnv::GetInstance()->spill_file_mgr()->next_id());
         auto status = ExecEnv::GetInstance()->spill_file_mgr()->create_spill_file(relative_path,
                                                                                   spill_file);

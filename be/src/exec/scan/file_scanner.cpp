@@ -1133,9 +1133,8 @@ Status FileScanner::_get_next_reader() {
                     init_status =
                             static_cast<GenericReader*>(cpp_reader.get())->init_reader(&jni_ctx);
                     _cur_reader = std::move(cpp_reader);
-                } else 
-#endif
-                {
+                } else {
+                
                     auto paimon_reader = PaimonJniReader::create_unique(_file_slot_descs, _state,
                                                                         _profile, range, _params);
                     init_status =

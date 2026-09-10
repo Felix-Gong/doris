@@ -120,8 +120,8 @@ add_thirdparty(arrow_acero LIB64)
 add_thirdparty(parquet LIB64)
 # liblance_c.a contains compiler_builtins cbrt symbols. Place libm before it
 # so the final linker resolves C math symbols from the system library first.
-add_thirdparty(lance_c LIB64 NOTADD)
-list(APPEND COMMON_THIRDPARTY m lance_c)
+# add_thirdparty(lance_c LIB64 NOTADD) # disabled: requires Rust 1.91+, server has 1.90
+list(APPEND COMMON_THIRDPARTY m) # removed lance_c: requires Rust 1.91+
 add_thirdparty(brpc LIB64)
 add_thirdparty(rocksdb)
 add_thirdparty(cyrus-sasl LIBNAME "lib/libsasl2.a")

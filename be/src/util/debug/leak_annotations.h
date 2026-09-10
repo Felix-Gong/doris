@@ -75,6 +75,16 @@ void __lsan_do_leak_check();
 // __lsan_do_leak_check() or the end-of-process leak check, and is not
 // affected by them.
 int __lsan_do_recoverable_leak_check();
+
+#if !defined(__SANITIZE_ADDRESS__) && !__has_feature(address_sanitizer)
+// Weak stubs for non-ASan builds on RISC-V
+__attribute__((weak)) void __lsan_disable() {}
+__attribute__((weak)) void __lsan_enable() {}
+__attribute__((weak)) void __lsan_ignore_object(const void*) {}
+__attribute__((weak)) int __lsan_is_turned_off() { return 0; }
+__attribute__((weak)) void __lsan_do_leak_check() {}
+__attribute__((weak)) int __lsan_do_recoverable_leak_check() { return 0; }
+#endif
 } // extern "C"
 
 namespace doris::debug {
@@ -82,6 +92,7 @@ namespace doris::debug {
 class ScopedLSANDisabler {
 public:
     ScopedLSANDisabler() { __lsan_disable(); }
+
     ~ScopedLSANDisabler() { __lsan_enable(); }
 };
 
