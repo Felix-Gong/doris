@@ -33,6 +33,10 @@
 #define DORIS_GLIBC_BASE_VERSION "GLIBC_2.17"
 #define DORIS_GLIBC_PREADV_VERSION "GLIBC_2.17"
 #define DORIS_GLIBC_SPLICE_VERSION "GLIBC_2.17"
+#elif defined(__riscv)
+#define DORIS_GLIBC_BASE_VERSION "GLIBC_2.27"
+#define DORIS_GLIBC_PREADV_VERSION "GLIBC_2.27"
+#define DORIS_GLIBC_SPLICE_VERSION "GLIBC_2.27"
 #else
 #error Unsupported architecture for Lance libc symbol version adapters.
 #endif

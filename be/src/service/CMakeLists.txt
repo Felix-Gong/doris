@@ -92,7 +92,10 @@ if (${MAKE_TEST} STREQUAL "OFF" AND ${BUILD_BENCHMARK} STREQUAL "OFF")
         ${DORIS_LINK_LIBS}
     )
 
-    if (OS_LINUX AND GLIBC_COMPATIBILITY)
+    # RISC-V does not support glibc 2.17: the architecture was first
+    # supported in glibc 2.27, so a RISC-V BE can never run on CentOS 7.
+    # Skip the glibc compatibility gate on that architecture.
+    if (OS_LINUX AND GLIBC_COMPATIBILITY AND NOT ARCH_RISCV64)
         # Use TARGET_FILE rather than an install/output directory so this check
         # follows doris_be if its build location or output name changes.
         set(GLIBC_COMPATIBILITY_CHECK
