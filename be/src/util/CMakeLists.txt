@@ -40,14 +40,52 @@ add_library(Util STATIC
     ${UTIL_FILES}
 )
 
+# crc32c_riscv.cc carries the Zbc/Zvbc CRC32C accelerators. The code is gated
+# by __riscv_zbc / __riscv_zvbc and probes /proc/cpuinfo at runtime, so cores
+# without the extensions fall back to the software crc32c library. Compile it
+# with the extensions enabled per-file (matching how x86_64 compiles AVX2
+# files separately from the -msse4.2 baseline); Zvbc added only when the
+# compiler understands it (GCC 14+; clang 17 rejects -march=..._zvbc).
+if (ARCH_RISCV64)
+    # The Zvbc march is accepted as a flag by GCC 12+, but crc32c_riscv.cc
+    # also needs the C vector intrinsic API (__riscv_vsetvlmax_e64m1 etc.)
+    # which only exists in GCC 13+. Compile the real code to decide: a
+    # toolchain that takes the flag but lacks the intrinsics (GCC 12, clang
+    # 17) falls back to the non-vector rv64gcv_zba_zbc build.
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/zvbc_probe.cpp
+"#include <riscv_vector.h>
+void probe(void) {
+    size_t vl = __riscv_vsetvlmax_e64m1();
+    vuint64m1_t v = __riscv_vmv_v_x_u64m1(1, vl);
+    (void)v;
+}
+int main(void) { probe(); return 0; }
+")
+    try_compile(COMPILER_SUPPORTS_ZVBC
+                ${CMAKE_CURRENT_BINARY_DIR}/zvbc_build
+                ${CMAKE_CURRENT_BINARY_DIR}/zvbc_probe.cpp
+                CMAKE_FLAGS "-DCMAKE_CXX_FLAGS=-march=rv64gcv_zba_zbc_zvbc"
+                OUTPUT_VARIABLE zvbc_try_out)
+    set(RISCV_CRC32C_MARCH "rv64gcv_zba_zbc")
+    if (COMPILER_SUPPORTS_ZVBC)
+        set(RISCV_CRC32C_MARCH "rv64gcv_zba_zbc_zvbc")
+    endif()
+    message(STATUS "crc32c_riscv.cc march: ${RISCV_CRC32C_MARCH}")
+    set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/crc32c_riscv.cc
+        PROPERTIES COMPILE_OPTIONS "-march=${RISCV_CRC32C_MARCH}")
+endif()
+
 pch_reuse(Util)
 
 # Unity build for the small util TUs (parse-overhead dominated). Ten files
 # leak file-scope macros and stay individual; hash/city.cc keeps its generic
 # k0..k4 static hash constants away from sibling scopes. perf_counters.cpp
 # is a Linux-only member (macOS builds its _mac variant, which is clean).
+# crc32c_riscv.cc stays individual so its per-file -march (Zbc/Zvbc) applies
+# to its own TU rather than a merged unity batch.
 set(UTIL_UNITY_SKIP
     ${CMAKE_CURRENT_SOURCE_DIR}/bfd_parser.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/crc32c_riscv.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/hash/city.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/hash/murmur_hash3.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/network_util.cpp
