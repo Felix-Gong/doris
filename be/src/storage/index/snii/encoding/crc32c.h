@@ -23,22 +23,27 @@
 #include <cstdint>
 
 #include "storage/index/snii/common/slice.h"
+#include "util/crc32c_riscv.h"
 
 namespace doris::snii {
 
 // CRC32C (Castagnoli, polynomial 0x1EDC6F41). Used to checksum the tail of each
-// format block. Thin inline adapter over Doris's bundled Google crc32c thirdparty
-// (crc32c::Extend / crc32c::Crc32c). That library computes the same canonical
-// CRC32C (same reflected polynomial, same standard pre/post inversion), so every
-// on-disk checksum stays byte-identical to the previous in-tree slice-by-8 /
-// SSE4.2 implementation -- this is an implementation swap, not a format change.
-// The leading :: keeps the crc32c namespace distinct from crc32c() below.
+// format block. Default path is the bundled Google crc32c thirdparty
+// (crc32c::Extend / crc32c::Crc32c), which computes the canonical CRC32C and
+// keeps every on-disk checksum byte-identical. On RISC-V with Zbc a
+// carry-less-multiply path (util/crc32c_riscv.cc) replaces it for speed
+// (bit-exact, ~7.4x on 1 MiB); otherwise the library path is used.
 inline uint32_t crc32c_extend(uint32_t crc, Slice data) {
+#if defined(__riscv) && (__riscv_xlen == 64) && defined(__riscv_zbc)
+    if (doris::crc32c_riscv::available()) {
+        return doris::crc32c_riscv::compute(crc, data.data(), data.size());
+    }
+#endif
     return ::crc32c::Extend(crc, data.data(), data.size());
 }
 
 inline uint32_t crc32c(Slice data) {
-    return ::crc32c::Crc32c(data.data(), data.size());
+    return crc32c_extend(0, data);
 }
 
 #ifdef BE_TEST
