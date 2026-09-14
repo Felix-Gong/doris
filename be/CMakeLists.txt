@@ -874,8 +874,17 @@ if (GLIBC_COMPATIBILITY)
 endif()
 
 if (NOT OS_MACOSX)
-    set(CMAKE_CXX_STANDARD_LIBRARIES "-lrt -l:libbfd.a -lsframe -liberty -lc -lm -ldl -pthread -lsystemd -lgfortran")
-    set(CMAKE_C_STANDARD_LIBRARIES "-lrt -l:libbfd.a -lsframe -liberty -lc -lm -ldl -pthread -lsystemd -lgfortran")
+    set(CMAKE_CXX_STANDARD_LIBRARIES "-lrt -l:libbfd.a -liberty -lc -lm -ldl -pthread")
+    set(CMAKE_C_STANDARD_LIBRARIES "-lrt -l:libbfd.a -liberty -lc -lm -ldl -pthread")
+    if (ARCH_RISCV64)
+        # RISC-V link dependencies: libsframe (binutils 2.40+, not present on
+        # older distros), libsystemd, libgfortran (OpenBLAS LAPACK built from
+        # system). Scope to RISC-V so x86_64/aarch64 builds are unchanged.
+        set(CMAKE_CXX_STANDARD_LIBRARIES
+            "${CMAKE_CXX_STANDARD_LIBRARIES} -lsframe -lsystemd -lgfortran")
+        set(CMAKE_C_STANDARD_LIBRARIES
+            "${CMAKE_C_STANDARD_LIBRARIES} -lsframe -lsystemd -lgfortran")
+    endif()
 else()
     set(DORIS_LINK_LIBS ${DORIS_LINK_LIBS}
         "-framework CoreFoundation"
