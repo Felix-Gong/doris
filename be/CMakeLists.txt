@@ -550,8 +550,13 @@ endif()
 SET(ARM_MARCH "${ARM_MARCH}")
 
 if (ARCH_RISCV64)
-    add_compile_options(-march=rv64gcv_zba_zbc)
-    message(STATUS "RISC-V march: rv64gcv_zba_zbc (Vector + Zba + Zbc)")
+    # Conservative baseline: rv64gc runs on every RISC-V RV64 core. Zba/Zbc/V
+    # are enabled only for translation units that explicitly need them (e.g.
+    # crc32c_riscv.cc), mirroring how x86_64 uses -msse4.2 globally plus
+    # per-file -mavx2. A global rv64gcv_zba_zbc would SIGILL on cores that
+    # lack Zba or vector support before any runtime probe could react.
+    add_compile_options(-march=rv64gc)
+    message(STATUS "RISC-V march: rv64gc (baseline; Zba/Zbc/V enabled per-file)")
 endif()
 
 if (ENABLE_INJECTION_POINT)
