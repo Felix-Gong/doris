@@ -67,18 +67,18 @@ static inline void *a_cas_p(volatile void *p, void *t, void *s)
 #define a_ctz_64 a_ctz_64
 static inline int a_ctz_64(uint64_t x)
 {
-	__asm__ (
-		"\tli %0, 64\n"
-		"\tbeqz %1, 1f\n"
-		"\tctz %0, %1\n"
-		"1:\n"
-		: "=r"(x) : "r"(x));
-	return x;
+	// Compiler builtins lower to the best available sequence. Plain
+	// "ctz"/"clz" are Zbb instructions, not in the global rv64gcv_zba_zbc
+	// march; emitting them unconditionally would SIGILL on Zbb-less CPUs.
+	// The builtins emit an equivalent portable sequence.
+	if (x == 0) {
+		return 64;
+	}
+	return __builtin_ctzll(x);
 }
 
 #define a_clz_64 a_clz_64
 static inline int a_clz_64(uint64_t x)
 {
-	__asm__ ("clz %0, %1" : "=r"(x) : "r"(x));
-	return x;
+	return __builtin_clzll(x);
 }
