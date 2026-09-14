@@ -1157,7 +1157,7 @@ build_fe_grpc_java_riscv() {
     local url="https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java/${grpc_java_version}/protoc-gen-grpc-java-${grpc_java_version}-linux-riscv64.exe"
     local dest="${TP_INSTALL_DIR}/bin/protoc-gen-grpc-java"
     echo "Downloading protoc-gen-grpc-java ${grpc_java_version} (riscv64) -> ${dest}"
-    curl -fsSL -o "${dest}" "${url}" || {
+    curl -fsSL --retry 3 --retry-delay 2 --retry-connrefused -o "${dest}" "${url}" || {
         echo "WARN: failed to download protoc-gen-grpc-java, FE gRPC codegen will fail" >&2
         return 1
     }
