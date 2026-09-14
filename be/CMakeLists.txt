@@ -52,7 +52,11 @@ if (CMAKE_SYSTEM_NAME MATCHES "Linux")
     # generators, and the dangling "-D" then swallows the next flag
     # (doris_be_test lost its -fno-access-control this way).
     add_definitions(-DOS_LINUX)
-    add_definitions(-D_UCS2 -D_UNICODE)
+    if (ARCH_RISCV64)
+        # RISC-V CLucene/ICU narrow-wide handling; keep it scoped to RISC-V
+        # so x86_64/aarch64 builds are unaffected.
+        add_definitions(-D_UCS2 -D_UNICODE)
+    endif()
 elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin")
     set (OS_MACOSX 1)
     add_definitions(-DOS_MACOSX)
@@ -343,6 +347,11 @@ else()
     target_compile_options(clucene-shared-static PRIVATE ${clucene_options})
     target_compile_options(clucene-contribs-lib PRIVATE ${clucene_options})
     target_compile_options(ic PRIVATE ${clucene_options})
+    # jieba dict is consumed at runtime by the inverted index; install it
+    # alongside the master branch.
+    install(DIRECTORY
+        ${CONTRIB_PATH}/clucene/src/contribs-lib/CLucene/analysis/jieba/dict
+        DESTINATION ${OUTPUT_DIR})
 endif()
 
 install(DIRECTORY
@@ -716,7 +725,11 @@ if (ARCH_RISCV64)
         -Wl,--no-whole-archive)
 endif()
 
-set(absl_DIR ${THIRDPARTY_DIR}/lib64/cmake/absl)
+if (ARCH_RISCV64)
+    set(absl_DIR ${THIRDPARTY_DIR}/lib64/cmake/absl)
+else()
+    set(absl_DIR ${THIRDPARTY_DIR}/lib/cmake/absl)
+endif()
 find_package(absl)
 
 # COMMON_THIRDPARTY are thirdparty dependencies that can run on all platform
