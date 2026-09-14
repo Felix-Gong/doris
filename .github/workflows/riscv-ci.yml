@@ -1,0 +1,125 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# RISC-V self-hosted CI.
+#
+# GitHub has no official riscv64 runners, so this workflow must run on
+# a self-hosted runner provisioned for the riscv64 architecture. Register
+# one with:
+#
+#   ./config.sh --url https://github.com/apache/doris \
+#     --labels riscv64,self-hosted,linux --work _work
+#
+# The runner host must provide:
+#   - openEuler 24.03 (or any glibc >= 2.34) riscv64 OS
+#   - clang 17 with RVV + Zba + Zbc support (-march=rv64gcv_zba_zbc)
+#   - JDK 17 (JAVA_HOME set)
+#   - Rust 1.91 (for lance-c thirdparty) + protoc
+#   - build-essential, cmake >= 3.20, ninja
+#
+# Requires-forks: the workflow only runs on the apache/doris repo or a
+# fork that opts in via settings -> Actions -> Allow self-hosted runners.
+
+name: RISC-V Build & Smoke Test (Self-Hosted)
+
+on:
+  pull_request:
+    paths:
+      - 'be/**'
+      - 'build.sh'
+      - 'env.sh'
+      - 'thirdparty/**'
+      - '.github/workflows/riscv-ci.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.ref }} (RISC-V CI)
+  cancel-in-progress: true
+
+jobs:
+  riscv-build:
+    name: Build doris_be on riscv64
+    runs-on: [self-hosted, riscv64, linux]
+    timeout-minutes: 540
+    env:
+      DORIS_HOME: ${{ github.workspace }}/doris
+      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-17.0.17.10-3.oe2403sp3.riscv64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up environment
+        run: |
+          set -e
+          echo "kernel: $(uname -m)"
+          cat /etc/os-release | head -2
+          clang++ --version | head -1
+          echo "JAVA_HOME=${JAVA_HOME}" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=${JAVA_HOME}/lib/server:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
+
+      - name: Build thirdparty (cached)
+        id: thirdparty
+        uses: actions/cache@v4
+        with:
+          path: thirdparty/installed
+          key: riscv64-thirdparty-${{ hashFiles('thirdparty/vars.sh') }}
+
+      - name: Build thirdparty
+        if: steps.thirdparty.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          export DORIS_HOME="${DORIS_HOME}"
+          export DORIS_TOOLCHAIN=clang
+          export CUSTOM_CMAKE=/usr/bin/cmake
+          bash thirdparty/build-thirdparty.sh --continue openssl 2>&1 | tail -30
+
+      - name: Configure BE
+        run: |
+          set -euo pipefail
+          cd "${DORIS_HOME}"
+          export PATH="${JAVA_HOME}/bin:${PATH}"
+          export ENABLE_PCH=OFF
+          bash build.sh --be 2>&1 | tail -20
+
+      - name: Smoke test doris_be
+        run: |
+          export LD_LIBRARY_PATH="${JAVA_HOME}/lib/server:${LD_LIBRARY_PATH}"
+          ./output/be/lib/doris_be --version 2>&1 | head -2
+
+  riscv-smoke:
+    name: RISC-V BE sanity checks
+    runs-on: [self-hosted, riscv64, linux]
+    needs: riscv-build
+    timeout-minutes: 30
+    env:
+      DORIS_HOME: ${{ github.workspace }}/doris
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check build hygiene
+        run: |
+          cd "${DORIS_HOME}"
+          bash build-support/check-build-hygiene.sh 2>&1 | tail -5
+
+      - name: Check license headers
+        uses: apache/skywalking-eyes@v0.6.0
+        with:
+          mode: check
