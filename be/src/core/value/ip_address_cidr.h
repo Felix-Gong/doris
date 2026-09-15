@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <charconv>
+
 #include "exec/common/format_ip.h"
 #include "exec/common/ipv6_to_binary.h"
 #include "util/sse_util.hpp"
