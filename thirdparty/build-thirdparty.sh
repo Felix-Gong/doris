@@ -2125,6 +2125,11 @@ build_base64() {
     MACHINE_TYPE="$(uname -m)"
     if [[ "${MACHINE_TYPE}" == "aarch64" || "${MACHINE_TYPE}" == 'arm64' ]]; then
         CFLAGS="--target=aarch64-linux-gnu -march=armv8-a+crc" NEON64_CFLAGS=" "
+    elif [[ "${MACHINE_TYPE}" == "riscv64" ]]; then
+        # No x86_64 SIMD flags on RISC-V: -mavx2/-mssse3 etc. are rejected by
+        # riscv GCC. base64's CMake auto-probes and disables SSE anyway, but
+        # keep the environment clean instead of injecting rejected flags.
+        :
     else
         AVX2_CFLAGS=-mavx2 SSSE3_CFLAGS=-mssse3 SSE41_CFLAGS=-msse4.1 SSE42_CFLAGS=-msse4.2 AVX_CFLAGS=-mavx
     fi
