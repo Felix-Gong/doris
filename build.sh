@@ -852,6 +852,12 @@ if [[ "${BUILD_BE}" -eq 1 ]]; then
     update_submodule "contrib/datasketches-cpp" "datasketches-cpp" "https://github.com/apache/datasketches-cpp/archive/refs/heads/master.tar.gz"
     update_submodule "contrib/apache-orc" "apache-orc" "https://github.com/apache/doris-thirdparty/archive/refs/heads/orc.tar.gz"
     update_submodule "contrib/clucene" "clucene" "https://github.com/apache/doris-thirdparty/archive/refs/heads/clucene.tar.gz"
+    # RISC-V: TurboPFOR ext/for (ic lib) does not compile on riscv64; the
+    # patch skips its subdirectory. No BE code consumes ic symbols.
+    if [[ "$(uname -m)" == "riscv64" ]]; then
+        python3 "${DORIS_HOME}/thirdparty/scripts/patch_clucene_riscv.py" \
+            "${DORIS_HOME}/contrib/clucene"
+    fi
     update_submodule "contrib/openblas" "openblas" "https://github.com/apache/doris-thirdparty/archive/refs/heads/openblas.tar.gz"
     update_submodule "contrib/faiss" "faiss" "https://github.com/apache/doris-thirdparty/archive/refs/heads/faiss.tar.gz"
     if [[ "${COMPILE_BENCH}" -eq 1 ]]; then

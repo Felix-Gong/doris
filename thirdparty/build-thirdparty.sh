@@ -806,6 +806,12 @@ build_hyperscan() {
     check_if_source_exist "${HYPERSCAN_SOURCE}"
     cd "${TP_SOURCE_DIR}/${HYPERSCAN_SOURCE}"
 
+    # RISC-V: vectorscan needs the archdetect patch for RV64 support. Idempotent
+    # (the script returns early if the patch is already applied).
+    if [[ "$(uname -m)" == "riscv64" ]]; then
+        python3 "${TP_DIR}/scripts/patch_vectorscan_riscv.py" "${TP_SOURCE_DIR}/${HYPERSCAN_SOURCE}"
+    fi
+
     # We don't need to build tools/hsbench which depends on sqlite3 installed.
     rm -rf "${TP_SOURCE_DIR}/${HYPERSCAN_SOURCE}/tools/hsbench"
 
@@ -908,6 +914,12 @@ build_brpc() {
     check_if_source_exist "${BRPC_SOURCE}"
 
     cd "${TP_SOURCE_DIR}/${BRPC_SOURCE}"
+
+    # RISC-V: bthread context switching and atomic ops need arch patches.
+    # Idempotent (the script returns early when already applied).
+    if [[ "$(uname -m)" == "riscv64" ]]; then
+        python3 "${TP_DIR}/scripts/patch_brpc_riscv.py" "${TP_SOURCE_DIR}/${BRPC_SOURCE}"
+    fi
 
     mkdir -p "${BUILD_DIR}"
     cd "${BUILD_DIR}"
