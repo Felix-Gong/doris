@@ -426,7 +426,7 @@ TEST(VariantFieldTest, ValidatesDecimalPrecisionByPhysicalWidth) {
     expect_encode_and_decode_failure(empty_metadata,
                                      decimal(VariantPrimitiveId::DECIMAL4, 1, 39, 4));
 
-    for (const auto [id, width] : {std::pair {VariantPrimitiveId::DECIMAL8, uint8_t {8}},
+    for (const auto& [id, width] : {std::pair {VariantPrimitiveId::DECIMAL8, uint8_t {8}},
                                    std::pair {VariantPrimitiveId::DECIMAL16, uint8_t {16}}}) {
         const std::string value = decimal(id, 1, 38, width);
         VariantField encoded = VariantField::from_ref(value_ref(empty_metadata, value));

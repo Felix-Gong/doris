@@ -801,7 +801,7 @@ TEST(SniiPhrasePrefixFrequency, CountsDistinctPhraseStartsAcrossTailGroups) {
     LogicalIndexReader idx = OpenIndex(&file, &segment, path);
 
     const std::vector<std::string> terms = {"lead", "aa_"};
-    for (const auto [cap, expected_frequency] :
+    for (const auto& [cap, expected_frequency] :
          {std::pair {32, 32U}, std::pair {33, 33U}, std::pair {65, 65U}}) {
         std::vector<query::PhraseMatch> matches;
         ASSERT_TRUE(query::phrase_prefix_query_with_frequencies(idx, terms, &matches, nullptr, cap)

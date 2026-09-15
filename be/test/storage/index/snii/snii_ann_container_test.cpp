@@ -272,7 +272,9 @@ protected:
         // The non-ANN blob, straight through the container API with bytes this
         // test owns.
         std::vector<doris::snii::writer::BlobFileSource> files;
-        for (const auto& [name, bytes] : _synthetic) {
+        for (const auto& synt : _synthetic) {
+            const auto& name = synt.first;
+            const auto& bytes = synt.second;
             files.push_back(doris::snii::writer::BlobFileSource {
                     .name = name,
                     .length = bytes.size(),
