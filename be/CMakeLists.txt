@@ -346,7 +346,6 @@ else()
     target_compile_options(clucene-core-static PRIVATE ${clucene_options})
     target_compile_options(clucene-shared-static PRIVATE ${clucene_options})
     target_compile_options(clucene-contribs-lib PRIVATE ${clucene_options})
-    target_compile_options(ic PRIVATE ${clucene_options})
     # jieba dict is consumed at runtime by the inverted index; install it
     # alongside the master branch.
     install(DIRECTORY
@@ -817,7 +816,12 @@ if (USE_UNWIND)
 endif()
 
 set(DORIS_DEPENDENCIES ${DORIS_DEPENDENCIES} orc)
-set(DORIS_DEPENDENCIES ${DORIS_DEPENDENCIES} ic)
+if (NOT ARCH_RISCV64)
+    # TurboPFOR (clucene src/ext/for -> 'ic' lib) does not compile on RISC-V:
+    # it assumes x86/ARM bswap16+register macros. No BE code consumes its
+    # symbols (clucene core only adds the include dir), so skip it entirely.
+    set(DORIS_DEPENDENCIES ${DORIS_DEPENDENCIES} ic)
+endif()
 set(DORIS_DEPENDENCIES ${DORIS_DEPENDENCIES} clucene-core-static)
 set(DORIS_DEPENDENCIES ${DORIS_DEPENDENCIES} clucene-shared-static)
 set(DORIS_DEPENDENCIES ${DORIS_DEPENDENCIES} clucene-contribs-lib)
