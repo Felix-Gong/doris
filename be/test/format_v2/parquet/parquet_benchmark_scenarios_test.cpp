@@ -78,7 +78,9 @@ TEST(ParquetBenchmarkScenariosTest, KernelMatrixCoversEverySimdStageAndBoundaryS
              {ValueType::INT32, ValueType::INT64, ValueType::FLOAT, ValueType::DOUBLE}},
             {Kernel::NESTED_SELECTION, {ValueType::INT32}},
     };
-    for (const auto& [kernel, value_types] : expected_types) {
+    for (const auto& expected_entry : expected_types) {
+        const auto& kernel = expected_entry.first;
+        const auto& value_types = expected_entry.second;
         for (const auto value_type : value_types) {
             EXPECT_TRUE(std::ranges::any_of(scenarios,
                                             [&](const KernelScenario& scenario) {

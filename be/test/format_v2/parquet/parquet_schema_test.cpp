@@ -491,7 +491,7 @@ TEST(ParquetSchemaTest, NativeVariantRejectsUnsupportedPrimitiveTypePairs) {
 }
 
 TEST(ParquetSchemaTest, NativeVariantAcceptsIcebergFullWidthSignedIntegerAnnotations) {
-    for (const auto [physical_type, bit_width] : {std::pair {tparquet::Type::INT32, int8_t {32}},
+    for (const auto& [physical_type, bit_width] : {std::pair {tparquet::Type::INT32, int8_t {32}},
                                                   std::pair {tparquet::Type::INT64, int8_t {64}}}) {
         tparquet::SchemaElement typed_value;
         typed_value.__set_type(physical_type);

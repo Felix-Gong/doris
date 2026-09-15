@@ -46,7 +46,7 @@ TEST(ParquetSimdKernelsTest, ByteStreamSplitRestoresFourAndEightByteValues) {
             }
         }
 
-        for (const auto [offset, count] :
+        for (const auto& [offset, count] :
              {std::pair<size_t, size_t> {0, rows}, {3, 31}, {17, 33}}) {
             std::vector<uint8_t> decoded(count * width);
             if (!try_byte_stream_split_decode(encoded.data(), width, offset, count, rows,

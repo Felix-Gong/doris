@@ -213,7 +213,9 @@ TEST(CastVariantV2Benchmark, DISABLED_BenchmarkTypedStringAndJsonb) {
 }
 
 TEST(CastVariantV2Benchmark, DISABLED_BenchmarkNestedArrayRoundTrip) {
-    auto [source, type] = nested_arrays();
+    auto nested = nested_arrays();
+    auto& source = nested.first;
+    auto& type = nested.second;
     ColumnPtr round_trip = cast_from_variant(cast_to_variant(source, type), type);
     ASSERT_EQ(round_trip->size(), ARRAY_BENCHMARK_ROWS);
     const int64_t duration = measure_ns([&] {
