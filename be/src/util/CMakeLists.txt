@@ -71,8 +71,12 @@ int main(void) { probe(); return 0; }
         set(RISCV_CRC32C_MARCH "rv64gcv_zba_zbc_zvbc")
     endif()
     message(STATUS "crc32c_riscv.cc march: ${RISCV_CRC32C_MARCH}")
+    # Skip the shared PCH: it is compiled with the baseline rv64gc march, and
+    # clang rejects a TU whose -march differs from the PCH' (AST feature
+    # mismatch). Keep unity skip too so COMPILE_OPTIONS applies to its own TU.
     set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/crc32c_riscv.cc
-        PROPERTIES COMPILE_OPTIONS "-march=${RISCV_CRC32C_MARCH}")
+        PROPERTIES COMPILE_OPTIONS "-march=${RISCV_CRC32C_MARCH}"
+                   SKIP_PRECOMPILE_HEADERS ON)
 endif()
 
 pch_reuse(Util)
