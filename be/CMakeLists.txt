@@ -812,6 +812,16 @@ set(DORIS_DEPENDENCIES
 )
 
 if (USE_UNWIND)
+    if (ARCH_RISCV64)
+        # RISC-V: the bundled libunwind.a also exports the 18 _Unwind_* symbols
+        # (_Unwind_RaiseException/_Unwind_Resume/...), duplicating GCC's
+        # libgcc_eh. If libunwind is scanned first, C++ exception unwinding binds
+        # to libunwind's unwinder, which is incompatible with GCC's
+        # .gcc_except_table and aborts in __libunwind_Unwind_Resume. Placing
+        # libgcc_eh before libunwind makes exceptions use GCC's unwinder while
+        # libunwind still provides the unw_* backtrace API Doris uses.
+        set(DORIS_DEPENDENCIES ${DORIS_DEPENDENCIES} gcc_eh)
+    endif()
     set(DORIS_DEPENDENCIES ${DORIS_DEPENDENCIES} libunwind)
 endif()
 
