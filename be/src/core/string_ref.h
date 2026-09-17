@@ -381,10 +381,35 @@ struct StringRefHash : CRC32Hash {};
 
 #else
 
-// Software fallback crc32c hash (no SSE 4.2 needed).
+// Software fallback crc32c hash (no SSE 4.2 needed), bit-identical to the
+// x86 path: seed 0xFFFFFFFF, process 8-byte words with the hardware-equivalent
+// per-bit CRC32C folding (matching _mm_crc32_u64 on each word). This replicates
+// the x86 golden values, unlike crc32c::Crc32c() whose software path treats
+// zero bytes as identity on some backends.
+inline uint32_t crc32c_hw_equiv_bits(uint32_t crc, uint64_t v, uint32_t bits) {
+    uint32_t c = crc;
+    for (uint32_t i = 0; i < bits; ++i) {
+        uint32_t bit = (c ^ static_cast<uint32_t>(v)) & 1u;
+        c >>= 1;
+        if (bit) {
+            c ^= 0x82F63B78u; // reflected CRC32C (Castagnoli) polynomial
+        }
+        v >>= 1;
+    }
+    return c;
+}
 inline size_t crc32_hash(const char* pos, size_t size) {
     if (size == 0) return 0;
-    return static_cast<size_t>(crc32c::Crc32c(reinterpret_cast<const uint8_t*>(pos), size));
+    const char* end = pos + size;
+    uint64_t res = -1ULL;
+    do {
+        auto word = unaligned_load<doris::UInt64>(pos);
+        res = crc32c_hw_equiv_bits(static_cast<uint32_t>(res), word, 64);
+        pos += 8;
+    } while (pos + 8 < end);
+    auto word = unaligned_load<doris::UInt64>(end - 8);
+    res = crc32c_hw_equiv_bits(static_cast<uint32_t>(res), word, 64);
+    return static_cast<size_t>(res);
 }
 
 inline size_t crc32_hash(const std::string& str) {

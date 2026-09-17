@@ -21,7 +21,33 @@
 #pragma once
 
 #include <crc32c/crc32c.h>
+#include <cstdint>
 #include <type_traits>
+
+namespace doris {
+// Bit-identical software CRC32C to the x86 _mm_crc32_u8/u16/u32/u64 and
+// aarch64 crc32x hardware instructions. Unlike crc32c::Extend(), whose
+// software path treats zero bytes as identity on some backends, the hardware
+// instruction advances the CRC per bit even for zero input values, so hash
+// table keys hashed on RISC-V must use this to match x86/aarch64 golden
+// values. See hash_crc32_return32.h for the same implementation.
+} // namespace doris
+
+// Global namespace: hash.h types (HashCRC32 etc.) live here, outside
+// namespace doris; keep crc32c_hw_equiv there too so the existing call
+// sites resolve it unqualified.
+inline uint32_t crc32c_hw_equiv(uint32_t crc, uint64_t v, uint32_t bits) {
+    uint32_t c = crc;
+    for (uint32_t i = 0; i < bits; ++i) {
+        uint32_t bit = (c ^ static_cast<uint32_t>(v)) & 1u;
+        c >>= 1;
+        if (bit) {
+            c ^= 0x82F63B78u; // reflected CRC32C (Castagnoli) polynomial
+        }
+        v >>= 1;
+    }
+    return c;
+}
 
 #include "core/extended_types.h"
 #include "core/string_ref.h"
@@ -230,12 +256,10 @@ struct HashCRC32<doris::UInt256> {
         crc = _mm_crc32_u64(crc, x.items[3]);
         return crc;
 #else
-        uint64_t crc = crc32c::Extend(~static_cast<uint32_t>(0),
-                                      reinterpret_cast<const uint8_t*>(&x.items[0]),
-                                      sizeof(x.items[0]));
-        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.items[1]), sizeof(x.items[1]));
-        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.items[2]), sizeof(x.items[2]));
-        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.items[3]), sizeof(x.items[3]));
+        uint64_t crc = crc32c_hw_equiv(0xFFFFFFFFu, x.items[0], 64);
+        crc = crc32c_hw_equiv(crc, x.items[1], 64);
+        crc = crc32c_hw_equiv(crc, x.items[2], 64);
+        crc = crc32c_hw_equiv(crc, x.items[3], 64);
         return crc;
 #endif
     }
@@ -252,12 +276,10 @@ struct HashCRC32<wide::Int256> {
         crc = _mm_crc32_u64(crc, x.items[3]);
         return crc;
 #else
-        uint64_t crc = crc32c::Extend(~static_cast<uint32_t>(0),
-                                      reinterpret_cast<const uint8_t*>(&x.items[0]),
-                                      sizeof(x.items[0]));
-        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.items[1]), sizeof(x.items[1]));
-        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.items[2]), sizeof(x.items[2]));
-        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.items[3]), sizeof(x.items[3]));
+        uint64_t crc = crc32c_hw_equiv(0xFFFFFFFFu, x.items[0], 64);
+        crc = crc32c_hw_equiv(crc, x.items[1], 64);
+        crc = crc32c_hw_equiv(crc, x.items[2], 64);
+        crc = crc32c_hw_equiv(crc, x.items[3], 64);
         return crc;
 #endif
     }
@@ -317,8 +339,8 @@ struct HashCRC32<doris::UInt72> {
         crc = _mm_crc32_u64(crc, x.b);
         return crc;
 #else
-        doris::UInt64 crc = crc32c::Extend(~static_cast<uint32_t>(0), &x.a, 1);
-        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.b), sizeof(x.b));
+        doris::UInt64 crc = crc32c_hw_equiv(0xFFFFFFFFu, x.a, 8);
+        crc = crc32c_hw_equiv(crc, x.b, 32);
         return crc;
 #endif
     }
@@ -333,9 +355,8 @@ struct HashCRC32<doris::UInt96> {
         crc = _mm_crc32_u64(crc, x.b);
         return crc;
 #else
-        uint64_t crc = crc32c::Extend(~static_cast<uint32_t>(0),
-                                      reinterpret_cast<const uint8_t*>(&x.a), sizeof(x.a));
-        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.b), sizeof(x.b));
+        uint64_t crc = crc32c_hw_equiv(0xFFFFFFFFu, x.a, 8);
+        crc = crc32c_hw_equiv(crc, x.b, 32);
         return crc;
 #endif
     }
@@ -351,10 +372,9 @@ struct HashCRC32<doris::UInt104> {
         crc = _mm_crc32_u64(crc, x.c);
         return crc;
 #else
-        uint64_t crc = crc32c::Extend(~static_cast<uint32_t>(0),
-                                      reinterpret_cast<const uint8_t*>(&x.a), sizeof(x.a));
-        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.b), sizeof(x.b));
-        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.c), sizeof(x.c));
+        uint64_t crc = crc32c_hw_equiv(0xFFFFFFFFu, x.a, 8);
+        crc = crc32c_hw_equiv(crc, x.b, 32);
+        crc = crc32c_hw_equiv(crc, x.c, 64);
         return crc;
 #endif
     }
@@ -370,10 +390,9 @@ struct HashCRC32<doris::UInt136> {
         crc = _mm_crc32_u64(crc, x.c);
         return crc;
 #else
-        uint64_t crc = crc32c::Extend(~static_cast<uint32_t>(0),
-                                      reinterpret_cast<const uint8_t*>(&x.a), sizeof(x.a));
-        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.b), sizeof(x.b));
-        crc = crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&x.c), sizeof(x.c));
+        uint64_t crc = crc32c_hw_equiv(0xFFFFFFFFu, x.a, 8);
+        crc = crc32c_hw_equiv(crc, x.b, 32);
+        crc = crc32c_hw_equiv(crc, x.c, 64);
         return crc;
 #endif
     }

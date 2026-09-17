@@ -20,6 +20,7 @@
 #include "core/string_ref.h"
 #include "core/types.h"
 #include "core/uint128.h"
+#include "hash.h"
 #include <crc32c/crc32c.h>
 
 // CRC32 hash functions that return uint32_t instead of size_t.
@@ -46,21 +47,27 @@ inline uint32_t crc32_compute(uint32_t crc, uint64_t v) {
     return static_cast<uint32_t>(_mm_crc32_u64(crc, v));
 }
 #else
-// Software fallback: use the crc32c library to provide true CRC32C, so the
-// hash values stay identical on platforms without SSE 4.2 / hardware CRC32.
+// Software fallback that is bit-identical to the SSE4.2 / aarch64 hardware
+// CRC32C instruction: _mm_crc32_u8/u16/u32/u64 process each input value
+// bit-by-bit against the reflected CRC32C polynomial, so a zero input value
+// STILL advances the CRC (it is not the identity). Using crc32c::Extend()
+// here is wrong: that library's software path treats runs of zero bytes as
+// identity on some backends, producing different hash values from the x86
+// golden vectors. The loop below mirrors the hardware datapath exactly.
 inline uint32_t crc32_compute(uint32_t crc, uint8_t v) {
-    return crc32c::Extend(crc, &v, 1);
+    return crc32c_hw_equiv(crc, v, 8);
 }
 inline uint32_t crc32_compute(uint32_t crc, uint16_t v) {
-    return crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&v), 2);
+    return crc32c_hw_equiv(crc, v, 16);
 }
 inline uint32_t crc32_compute(uint32_t crc, uint32_t v) {
-    return crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&v), 4);
+    return crc32c_hw_equiv(crc, v, 32);
 }
 inline uint32_t crc32_compute(uint32_t crc, uint64_t v) {
-    return crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(&v), 8);
+    return crc32c_hw_equiv(crc, v, 64);
 }
 #endif
+
 
 template <typename T>
 struct HashCRC32Return32;
