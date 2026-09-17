@@ -173,7 +173,14 @@ bool init_glog(const char* basename) {
     // ATTN: sys_log_dir is deprecated, this is just for compatibility
     std::string log_dir = config::sys_log_dir;
     if (log_dir == "") {
-        log_dir = getenv("LOG_DIR");
+        const char* env_log_dir = getenv("LOG_DIR");
+        if (env_log_dir != nullptr) {
+            log_dir = env_log_dir;
+        } else {
+            // glog requires a log dir; default to the current directory so a
+            // missing LOG_DIR does not crash std::string from a null ptr.
+            log_dir = ".";
+        }
     }
     FLAGS_log_dir = log_dir;
     // 0 means buffer INFO only
