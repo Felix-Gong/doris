@@ -139,8 +139,19 @@ Status Krb5InterfaceImpl::_check_error(krb5_error_code code, krb5_context contex
                                        const char* message) {
     if (code) {
         const char* err_message = get_error_message(context, code);
-        std::string full_message = std::string(message) + ": " + err_message;
-        free_error_message(context, err_message);
+        char fallback[32];
+        const char* err_text = err_message;
+        if (err_text == nullptr) {
+            // krb5_get_error_message() can return null when the context is in a
+            // partially-initialized state (e.g. a failed krb5_init_context on some
+            // builds). Guard the string concatenation below against it.
+            snprintf(fallback, sizeof(fallback), "error code %d", code);
+            err_text = fallback;
+        }
+        std::string full_message = std::string(message ? message : "krb5 error") + ": " + err_text;
+        if (err_message != nullptr) {
+            free_error_message(context, err_message);
+        }
         return Status::InternalError(full_message);
     }
     return Status::OK();
