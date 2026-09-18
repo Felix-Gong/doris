@@ -722,12 +722,14 @@ set(DORIS_LINK_LIBS
 )
 
 if (ARCH_RISCV64)
+    # ICU links as ordinary static libraries (same as x86_64/aarch64 via
+    # add_thirdparty). Verified on RISC-V: removing --whole-archive keeps all
+    # ICU consumers (icu_normalizer, ICU tokenizer) working and drops ~20MB
+    # from the binary.
     set(DORIS_LINK_LIBS ${DORIS_LINK_LIBS}
-        -Wl,--whole-archive
         icuuc
         icui18n
-        icudata
-        -Wl,--no-whole-archive)
+        icudata)
 endif()
 
 if (ARCH_RISCV64)
