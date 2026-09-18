@@ -70,6 +70,10 @@ def patch_bthread_context(brpc_src_dir):
     else:
         riscv_code = '''
 #if defined(BTHREAD_CONTEXT_PLATFORM_linux_riscv64) && defined(BTHREAD_CONTEXT_COMPILER_gcc)
+// Only integer callee-saved registers (s0-s11, sp, ra) are saved here.
+// fs0-fs11 are intentionally omitted: bthread yields only at function-call
+// boundaries where the C ABI has already spilled any live FP state, matching
+// boost.fcontext on other architectures.
 __asm (
 ".text\\n"
 ".globl bthread_jump_fcontext\\n"
