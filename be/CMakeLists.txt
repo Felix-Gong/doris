@@ -417,10 +417,11 @@ if (NOT OS_MACOSX) # MACOSX's lld will core dump
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=${CUSTUM_LINKER_COMMAND}")
     endif()
 
-# lld on riscv64 is strict about duplicate symbols from static archives.
-# Several thirdparty deps (gRPC, arrow, etc.) bring in abseil symbols that
-# collide with the explicit absl:: targets. Allow duplicates to match
-# behaviour of GNU ld / gold on other architectures.
+# RISC-V thirdparty archives (gRPC, arrow, cctz, etc.) define symbols that
+# also appear in the explicit absl:: targets, and several test translation
+# units share template instantiations. GNU ld tolerates this by default and
+# mimics the x86_64/aarch64 link, but lld refuses duplicate definitions, so
+# make the tolerated-duplicate behaviour explicit and toolchain-independent.
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64|riscv")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition")
 endif ()
