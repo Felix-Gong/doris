@@ -873,8 +873,16 @@ if (GLIBC_COMPATIBILITY)
 endif()
 
 if (NOT OS_MACOSX)
-    set(CMAKE_CXX_STANDARD_LIBRARIES "-lrt -l:libbfd.a -liberty -lc -lm -ldl -pthread")
-    set(CMAKE_C_STANDARD_LIBRARIES "-lrt -l:libbfd.a -liberty -lc -lm -ldl -pthread")
+    # RISC-V: grpc (systemd sd_*), OpenBLAS (gfortran) and libbfd (libsframe)
+    # are pulled in as static archives by the test/executable link; add the
+    # shared runtime deps explicitly so the final link resolves cleanly.
+    if (ARCH_RISCV64)
+        set(CMAKE_CXX_STANDARD_LIBRARIES "-lrt -l:libbfd.a -l:libsframe.a -liberty -lc -lm -ldl -pthread -lsystemd -lgfortran")
+        set(CMAKE_C_STANDARD_LIBRARIES "-lrt -l:libbfd.a -l:libsframe.a -liberty -lc -lm -ldl -pthread -lsystemd -lgfortran")
+    else()
+        set(CMAKE_CXX_STANDARD_LIBRARIES "-lrt -l:libbfd.a -liberty -lc -lm -ldl -pthread")
+        set(CMAKE_C_STANDARD_LIBRARIES "-lrt -l:libbfd.a -liberty -lc -lm -ldl -pthread")
+    endif()
 else()
     set(DORIS_LINK_LIBS ${DORIS_LINK_LIBS}
         "-framework CoreFoundation"

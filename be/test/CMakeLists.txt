@@ -161,6 +161,20 @@ if (TARGET phdr_cache_test_dso)
     add_dependencies(doris_be_test phdr_cache_test_dso)
 endif()
 
+# RISC-V: clang -O3 on the heaviest test translation units (function_string_test
+# etc.) can take >4 CPU-hours per file due to template-heavy codegen regression.
+# -O1 keeps correctness and cuts that to minutes; matches the Exec -O1 precedent.
+# Additionally, clang's integrated assembler (MCAssembler::relaxLEB) is O(n^2)
+# on the huge debug info (-gdwarf-5) of the two heaviest TUs and can exceed 4
+# CPU-hours each; route them through GNU as (--no-relax) instead.
+if (ARCH_RISCV64)
+    target_compile_options(doris_be_test PRIVATE -O1)
+    set_source_files_properties(
+        ${BASE_DIR}/test/exprs/function/function_string_test.cpp
+        ${BASE_DIR}/test/format_v2/orc/orc_reader_test.cpp
+        PROPERTIES COMPILE_OPTIONS "-fno-integrated-as")
+endif()
+
 # run-be-ut.sh resets DORIS_HOME to the test binary dir before launching the
 # tests, so the real-IPADIC dictionary test can't find the repo dictionary via
 # DORIS_HOME.
