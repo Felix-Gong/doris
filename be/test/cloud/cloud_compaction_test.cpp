@@ -732,7 +732,7 @@ TEST_F(CloudCompactionTest, cumulative_pick_uses_local_conflict_window) {
 
     {
         auto tablet_meta = create_cloud_compaction_test_tablet_meta(10002);
-        auto tablet = create_cloud_tablet_with_rowsets(_engine, tablet_meta, 1, {1, 2, 3, 4});
+        auto tablet = create_cloud_tablet_with_rowsets(_engine, tablet_meta, 1, std::vector<RowsetSharedPtr>{1, 2, 3, 4});
         _engine._submitted_cumu_compactions[tablet->tablet_id()] = {
                 create_inflight_cumu_compaction(_engine, tablet, 1, 2)};
 
@@ -786,7 +786,7 @@ TEST_F(CloudCompactionTest, serial_suffix_compaction_on_running_tablet_keeps_poi
     sync_point->enable_processing();
 
     auto tablet_meta = create_cloud_compaction_test_tablet_meta(10007);
-    auto tablet = create_cloud_tablet_with_rowsets(_engine, tablet_meta, 2, {2});
+    auto tablet = create_cloud_tablet_with_rowsets(_engine, tablet_meta, 2, std::vector<RowsetSharedPtr>{2});
     TestableCloudCumulativeCompaction compaction(_engine, tablet);
     compaction.set_input_rowsets({create_rowset(Version(3, 22), 1, true, 20 * 1024 * 1024)});
     compaction.set_output_rowset(create_rowset(Version(3, 22), 1, false, 20 * 1024 * 1024));
@@ -893,7 +893,7 @@ TEST_F(CloudCompactionTest, parallel_pick_keeps_mode_after_dynamic_config_change
 
     auto tablet_meta = create_cloud_compaction_test_tablet_meta(10004);
     auto tablet =
-            create_cloud_tablet_with_rowsets(_engine, tablet_meta, 2, {2, 3, 4}, 100 * 1024 * 1024);
+            create_cloud_tablet_with_rowsets(_engine, tablet_meta, 2, std::vector<RowsetSharedPtr>{2, 3, 4}, 100 * 1024 * 1024);
     TestableCloudCumulativeCompaction compaction(_engine, tablet);
     config::enable_parallel_cumu_compaction = false;
     auto st = compaction.prepare_compact();
