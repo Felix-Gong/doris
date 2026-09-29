@@ -65,7 +65,7 @@ TEST_F(ColumnTypeConverterTest, TestIntegerWideningConversions) {
 
         auto mutable_dst = dst_type->create_column();
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         auto& dst_data = static_cast<ColumnInt16&>(*mutable_dst).get_data();
@@ -97,7 +97,7 @@ TEST_F(ColumnTypeConverterTest, TestIntegerWideningConversions) {
 
         auto mutable_dst = dst_type->create_column();
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         auto& dst_data = static_cast<ColumnInt32&>(*mutable_dst).get_data();
@@ -130,7 +130,7 @@ TEST_F(ColumnTypeConverterTest, TestIntegerNarrowingConversions) {
 
         auto mutable_dst = dst_type->create_column();
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         auto& dst_data = static_cast<ColumnInt16&>(*mutable_dst).get_data();
@@ -159,7 +159,7 @@ TEST_F(ColumnTypeConverterTest, TestIntegerNarrowingConversions) {
 
         auto mutable_dst = nullable_dst_type->create_column();
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(!st.ok());
     }
 }
@@ -192,7 +192,7 @@ TEST_F(ColumnTypeConverterTest, TestFloatingPointConversions) {
         null_map.resize_fill(src_data.size(), 0);
 
         // Perform conversion
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         ASSERT_EQ(5, nested_col.size());
@@ -235,7 +235,7 @@ TEST_F(ColumnTypeConverterTest, TestFloatingPointConversions) {
         null_map.resize_fill(src_col->size(), 0);
 
         // Perform conversion
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         ASSERT_EQ(11, nested_col.size());
@@ -285,7 +285,7 @@ TEST_F(ColumnTypeConverterTest, TestFloatingPointConversions) {
 
         auto mutable_dst = dst_type->create_column();
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         auto& dst_data = static_cast<ColumnFloat64&>(*mutable_dst).get_data();
@@ -320,7 +320,7 @@ TEST_F(ColumnTypeConverterTest, TestDecimalConversions) {
 
         auto mutable_dst = dst_type->create_column();
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
         auto& dst_data = static_cast<ColumnDecimal64&>(*mutable_dst).get_data();
         ASSERT_EQ(2, dst_data.size());
@@ -348,7 +348,7 @@ TEST_F(ColumnTypeConverterTest, TestDecimalConversions) {
 
         auto mutable_dst = dst_type->create_column();
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         auto& dst_data = static_cast<ColumnDecimal128V3&>(*mutable_dst).get_data();
@@ -379,7 +379,7 @@ TEST_F(ColumnTypeConverterTest, TestDecimalConversions) {
         auto mutable_dst = dst_type->create_column();
 
         // Perform conversion
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         auto& dst_data = static_cast<ColumnDecimal256&>(*mutable_dst).get_data();
@@ -416,7 +416,7 @@ TEST_F(ColumnTypeConverterTest, TestDecimalConversions) {
         null_map.resize_fill(src_data.size(), 0);
 
         ASSERT_EQ(3, src_data.size());
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
         ASSERT_EQ(3, nested_col.size());
         EXPECT_EQ(123, nested_col.get_data()[0]);  // Truncated to 123
@@ -454,7 +454,7 @@ TEST_F(ColumnTypeConverterTest, TestDecimalConversions) {
         null_map.resize_fill(src_data.size(), 0);
 
         ASSERT_EQ(3, src_data.size());
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
         ASSERT_EQ(3, nested_col.size());
         EXPECT_EQ(10, nested_col.get_data()[0]);
@@ -494,7 +494,7 @@ TEST_F(ColumnTypeConverterTest, TestDecimalConversions) {
         null_map.resize_fill(src_data.size(), 0);
 
         ASSERT_EQ(6, src_data.size());
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
         ASSERT_EQ(6, nested_col.size());
         EXPECT_EQ(-10, nested_col.get_data()[0]);
@@ -528,7 +528,7 @@ TEST_F(ColumnTypeConverterTest, TestDecimalConversions) {
 
         auto mutable_dst = dst_type->create_column();
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
         auto& dst_data = static_cast<ColumnDecimal64&>(*mutable_dst).get_data();
         ASSERT_EQ(3, dst_data.size());
@@ -557,7 +557,7 @@ TEST_F(ColumnTypeConverterTest, TestDecimalConversions) {
 
         auto mutable_dst = dst_type->create_column();
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
         auto& dst_data = static_cast<ColumnDecimal128V3&>(*mutable_dst).get_data();
         ASSERT_EQ(3, dst_data.size());
@@ -585,7 +585,7 @@ TEST_F(ColumnTypeConverterTest, TestDecimalConversions) {
 
         auto mutable_dst = dst_type->create_column();
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
         auto& dst_data = static_cast<ColumnDecimal256&>(*mutable_dst).get_data();
         ASSERT_EQ(3, dst_data.size());
@@ -617,7 +617,7 @@ TEST_F(ColumnTypeConverterTest, TestDecimalConversions) {
         auto& nullable_col = static_cast<ColumnNullable&>(*mutable_dst);
         auto& null_map = nullable_col.get_null_map_data();
         null_map.resize_fill(src_data.size(), 0);
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
         auto& dst_data =
                 static_cast<ColumnDecimal256&>(nullable_col.get_nested_column()).get_data();
@@ -657,7 +657,7 @@ TEST_F(ColumnTypeConverterTest, TestDecimalConversions) {
         null_map.resize_fill(src_data.size(), 0);
 
         // Perform conversion
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_FALSE(st.ok());
     }
 
@@ -689,7 +689,7 @@ TEST_F(ColumnTypeConverterTest, TestDecimalConversions) {
         null_map.resize_fill(src_data.size(), 0);
 
         // Perform conversion
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         ASSERT_EQ(3, nested_col.size());
@@ -733,7 +733,7 @@ TEST_F(ColumnTypeConverterTest, TestDecimalConversions) {
         null_map.resize_fill(src_data.size(), 0);
 
         // Perform conversion
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         ASSERT_EQ(6, nested_col.size());
@@ -780,7 +780,7 @@ TEST_F(ColumnTypeConverterTest, TestDecimalConversions) {
         null_map.resize_fill(src_col->size(), 0);
 
         // Perform conversion
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         ASSERT_EQ(7, nested_col.size());
@@ -818,7 +818,7 @@ TEST_F(ColumnTypeConverterTest, TestStringConversions) {
 
         auto mutable_dst = dst_type->create_column();
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         auto& string_col = static_cast<ColumnString&>(*mutable_dst);
@@ -849,7 +849,7 @@ TEST_F(ColumnTypeConverterTest, TestStringConversions) {
 
         auto mutable_dst = dst_type->create_column();
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         auto& string_col = static_cast<ColumnString&>(*mutable_dst);
@@ -883,7 +883,7 @@ TEST_F(ColumnTypeConverterTest, TestStringConversions) {
         auto& nested_col = static_cast<ColumnInt32&>(nullable_col.get_nested_column());
         auto& null_map = nullable_col.get_null_map_data();
         null_map.resize_fill(src_col->size(), 0);
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         ASSERT_EQ(3, nested_col.size());
@@ -914,7 +914,7 @@ TEST_F(ColumnTypeConverterTest, TestStringConversions) {
         auto mutable_dst = dst_type->create_column();
         mutable_dst->resize(0);
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         auto& string_col = static_cast<ColumnString&>(*mutable_dst);
@@ -950,7 +950,7 @@ TEST_F(ColumnTypeConverterTest, TestStringConversions) {
         auto mutable_dst = dst_type->create_column();
         mutable_dst->resize(0);
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         auto& string_col = static_cast<ColumnString&>(*mutable_dst);
@@ -981,7 +981,7 @@ TEST_F(ColumnTypeConverterTest, TestStringConversions) {
 
         auto mutable_dst = dst_type->create_column();
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         auto& string_col = static_cast<ColumnString&>(*mutable_dst);
@@ -1023,7 +1023,7 @@ TEST_F(ColumnTypeConverterTest, TestStringConversions) {
         null_map.resize_fill(src_col->size(), 0);
 
         // Perform conversion
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         ASSERT_EQ(7, nested_col.size());
@@ -1070,7 +1070,7 @@ TEST_F(ColumnTypeConverterTest, TestStringToIntegerTypes) {
         null_map.resize_fill(src_col->size(), 0);
 
         // Perform conversion
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         ASSERT_EQ(7, nested_col.size());
@@ -1116,7 +1116,7 @@ TEST_F(ColumnTypeConverterTest, TestStringToIntegerTypes) {
         null_map.resize_fill(src_col->size(), 0);
 
         // Perform conversion
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         ASSERT_EQ(6, nested_col.size());
@@ -1160,7 +1160,7 @@ TEST_F(ColumnTypeConverterTest, TestStringToIntegerTypes) {
         null_map.resize_fill(src_col->size(), 0);
 
         // Perform conversion
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         ASSERT_EQ(5, nested_col.size());
@@ -1204,7 +1204,7 @@ TEST_F(ColumnTypeConverterTest, TestStringToIntegerTypes) {
         null_map.resize_fill(src_col->size(), 0);
 
         // Perform conversion
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         ASSERT_EQ(5, nested_col.size());
@@ -1246,7 +1246,7 @@ TEST_F(ColumnTypeConverterTest, TestStringToIntegerTypes) {
         null_map.resize_fill(src_col->size(), 0);
 
         // Perform conversion
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         ASSERT_EQ(4, nested_col.size());
@@ -1429,7 +1429,7 @@ TEST_F(ColumnTypeConverterTest, TestDateTimeV2ToNumericConversions) {
         auto src_col = make_datetimev2_col({{2024, 1, 1, 0, 0, 0, 123456}});
         auto mutable_dst = dst_type->create_column();
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         auto& dst_data = static_cast<ColumnInt64&>(*mutable_dst).get_data();
@@ -1455,7 +1455,7 @@ TEST_F(ColumnTypeConverterTest, TestDateTimeV2ToNumericConversions) {
         auto& null_map = nullable_col.get_null_map_data();
         null_map.resize_fill(src_col->size(), 0);
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
         auto& nested_col = static_cast<ColumnInt32&>(nullable_col.get_nested_column());
         auto& dst_data = nested_col.get_data();
@@ -1479,7 +1479,7 @@ TEST_F(ColumnTypeConverterTest, TestDateTimeV2ToNumericConversions) {
         auto src_col = make_datetimev2_col({{3000, 1, 1, 0, 0, 0, 0}});
         auto mutable_dst = dst_type->create_column();
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_FALSE(st.ok());
     }
 
@@ -1514,7 +1514,7 @@ TEST_F(ColumnTypeConverterTest, TestDateTimeV2ToNumericConversions) {
         auto& null_map = nullable_col.get_null_map_data();
         null_map.resize_fill(src_col->size(), 0);
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         ASSERT_EQ(15, null_map.size());
@@ -1575,7 +1575,7 @@ TEST_F(ColumnTypeConverterTest, TestStringToDateLikeConversions) {
         auto& null_map = nullable_col.get_null_map_data();
         null_map.resize_fill(src_col->size(), 0);
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
         ASSERT_EQ(2, nested_col.size());
         char date_buf[64];
@@ -1603,7 +1603,7 @@ TEST_F(ColumnTypeConverterTest, TestStringToDateLikeConversions) {
         auto& null_map = nullable_col.get_null_map_data();
         null_map.resize_fill(src_col->size(), 0);
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
         ASSERT_EQ(2, nested_col.size());
         EXPECT_EQ("2024-05-06", nested_col.get_element(0).to_string());
@@ -1629,7 +1629,7 @@ TEST_F(ColumnTypeConverterTest, TestStringToDateLikeConversions) {
         auto& null_map = nullable_col.get_null_map_data();
         null_map.resize_fill(src_col->size(), 0);
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
         ASSERT_EQ(2, nested_col.size());
         char datetime_buf[64];
@@ -1657,7 +1657,7 @@ TEST_F(ColumnTypeConverterTest, TestStringToDateLikeConversions) {
         auto& null_map = nullable_col.get_null_map_data();
         null_map.resize_fill(src_col->size(), 0);
 
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
         ASSERT_EQ(2, nested_col.size());
         EXPECT_EQ("2024-09-10 11:12:13.123456", nested_col.get_element(0).to_string(6));
@@ -1682,7 +1682,7 @@ TEST_F(ColumnTypeConverterTest, TestEmptyColumnConversions) {
         src_col->resize(0);
         mutable_dst->resize(0);
         // Perform conversion
-        Status st = converter->convert(src_col, mutable_dst);
+        Status st = converter->convert(reinterpret_cast<ColumnPtr&>(src_col), mutable_dst);
         ASSERT_TRUE(st.ok());
 
         // Check size remains zero
