@@ -21,6 +21,7 @@
 #include <parquet/types.h>
 
 #include <array>
+#include <bit>
 #include <cstring>
 #include <limits>
 #include <memory>
@@ -4764,7 +4765,11 @@ void expect_fixed_width_dictionary_gather() {
     dictionary_data.resize(4);
     for (size_t row = 0; row < dictionary_data.size(); ++row) {
         const uint64_t bits = 0x0102030405060708ULL + row;
-        memcpy(&dictionary_data[row], &bits, sizeof(ValueType));
+        if constexpr (sizeof(ValueType) == 8) {
+            dictionary_data[row] = std::bit_cast<ValueType>(bits);
+        } else {
+            dictionary_data[row] = std::bit_cast<ValueType>(static_cast<uint32_t>(bits));
+        }
     }
     auto destination = ColumnType::create();
     destination->get_data().push_back(dictionary_data[0]);
