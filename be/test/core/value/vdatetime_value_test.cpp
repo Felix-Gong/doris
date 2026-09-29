@@ -95,7 +95,7 @@ TEST(VDateTimeValueTest, date_v2_from_uint32_test) {
         uint8_t day = 24;
 
         uint32_t ui32 = (uint32_t)((year << 9) | (month << 5) | day);
-        auto date_v2 = (DateV2Value<DateV2ValueType>&)ui32;
+        auto date_v2 = DateV2Value<DateV2ValueType>(ui32);
 
         EXPECT_TRUE(date_v2.year() == year);
         EXPECT_TRUE(date_v2.month() == month);
@@ -147,7 +147,7 @@ TEST(VDateTimeValueTest, datetime_v2_from_uint64_test) {
                                ((uint64_t)day << 37) | ((uint64_t)hour << 32) |
                                ((uint64_t)minute << 26) | ((uint64_t)second << 20) |
                                (uint64_t)microsecond);
-        datetime_v2 = (DateV2Value<DateTimeV2ValueType>&)ui64;
+        datetime_v2 = DateV2Value<DateTimeV2ValueType>(ui64);
 
         EXPECT_TRUE(datetime_v2.year() == year);
         EXPECT_TRUE(datetime_v2.month() == month);
