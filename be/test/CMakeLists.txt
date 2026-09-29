@@ -169,10 +169,14 @@ endif()
 # CPU-hours each; route them through GNU as (--no-relax) instead.
 if (ARCH_RISCV64)
     target_compile_options(doris_be_test PRIVATE -O1)
-    set_source_files_properties(
-        ${BASE_DIR}/test/exprs/function/function_string_test.cpp
-        ${BASE_DIR}/test/format_v2/orc/orc_reader_test.cpp
-        PROPERTIES COMPILE_OPTIONS "-fno-integrated-as")
+    # -fno-integrated-as only exists in clang; GCC rejects it as an unknown
+    # option, so this workaround must not follow the RISC-V build onto GCC.
+    if (COMPILER_CLANG)
+        set_source_files_properties(
+            ${BASE_DIR}/test/exprs/function/function_string_test.cpp
+            ${BASE_DIR}/test/format_v2/orc/orc_reader_test.cpp
+            PROPERTIES COMPILE_OPTIONS "-fno-integrated-as")
+    endif()
 endif()
 
 # run-be-ut.sh resets DORIS_HOME to the test binary dir before launching the
