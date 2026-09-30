@@ -30,8 +30,8 @@
 // Corpus is not committed (~41 MB). Point SNII_BENCH_CORPUS_DIR at a directory of wikipedia_*.json
 // with {"title","content"} per line:
 //
-//   SNII_BENCH_CORPUS_DIR=/path/to/corpus \
-//     SNII_BENCH_QUERY_ITERATIONS=30 \
+//   SNII_BENCH_CORPUS_DIR=/path/to/corpus
+//     SNII_BENCH_QUERY_ITERATIONS=30
 //     ./run-be-ut.sh --run --filter='*SniiVsV3Benchmark*' -j <N>
 //
 // SNII_BENCH_QUERY_ITERATIONS defaults to 30. The benchmark reports nearest-rank

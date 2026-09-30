@@ -42,7 +42,7 @@
 // Pin to a performance core; on a hybrid CPU an E-core sample is not comparable
 // to a P-core one and mixing them silently widens every percentile:
 //
-//   taskset -c 4 env SNII_BKD_BENCH_POINTS=2000000 SNII_BKD_BENCH_ITERATIONS=30 \
+//   taskset -c 4 env SNII_BKD_BENCH_POINTS=2000000 SNII_BKD_BENCH_ITERATIONS=30
 //     ./run-be-ut.sh --run --filter='*BkdNativeVsClucene*' -j 28
 //
 // Both indexes are built from the SAME encoded points in the SAME process, so
