@@ -81,7 +81,7 @@ TEST_F(HttpRequestTest, basic_auth_scheme_is_case_insensitive) {
     std::string encoded;
     base64_encode(std::string("alice:secret"), &encoded);
 
-    for (const std::string& scheme : {"Basic", "basic", "BASIC", "BaSiC"}) {
+    for (const std::string scheme : {"Basic", "basic", "BASIC", "BaSiC"}) {
         const std::string dumped =
                 debug_string_with_header(HttpHeaders::AUTHORIZATION, scheme + " " + encoded);
         EXPECT_NE(dumped.find("value=alice:***MASKED***"), std::string::npos)
