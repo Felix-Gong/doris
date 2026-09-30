@@ -46,7 +46,7 @@ ColumnPtr timestamp_ns_column(std::initializer_list<int64_t> epoch_nanos) {
     for (const int64_t value : epoch_nanos) {
         column->insert_value(TimeStampNsValue(value));
     }
-    return std::move(column);
+    return column;
 }
 
 std::vector<uint16_t> evaluate(const ColumnPredicate& predicate, const IColumn& column) {
