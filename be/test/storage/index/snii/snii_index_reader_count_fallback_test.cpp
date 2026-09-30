@@ -72,12 +72,16 @@
 #include "storage/index/snii/snii_doris_adapter.h"
 #include "storage/index/snii/snii_prx_profile.h"
 // Exercise the reader router without acquiring process-global query-cache ownership.
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wkeyword-macro"
+#endif
 #define private public
 #include "storage/index/snii/snii_index_reader.h"
 #undef private
+#if defined(__clang__)
 #pragma clang diagnostic pop
+#endif
 #include "storage/index/snii_query_test_util.h"
 #include "storage/olap_common.h"
 #include "storage/tablet/tablet_schema.h"
