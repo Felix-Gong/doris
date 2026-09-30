@@ -482,7 +482,7 @@ TEST_F(CustomAnalyzerTest, CommonGramsIndexChainRejectsInvalidUtf8AfterAValidTok
 }
 
 TEST_F(CustomAnalyzerTest, CommonGramsDeniesUnsafePositionFactories) {
-    for (const std::string& tokenizer : {"standard", "pinyin", "basic", "icu", "keyword"}) {
+    for (const std::string tokenizer : {"standard", "pinyin", "basic", "icu", "keyword"}) {
         expect_common_grams_analyzer_error(common_grams_config(tokenizer, {}),
                                            AnalysisPurpose::kIndex);
     }
@@ -503,7 +503,7 @@ TEST_F(CustomAnalyzerTest, CommonGramsDeniesUnsafePositionFactories) {
 }
 
 TEST_F(CustomAnalyzerTest, CommonGramsAcceptsReviewedUnitPositionFactories) {
-    for (const std::string& tokenizer : {"empty", "char_group", "ngram", "edge_ngram"}) {
+    for (const std::string tokenizer : {"empty", "char_group", "ngram", "edge_ngram"}) {
         EXPECT_NO_THROW(CustomAnalyzer::build_custom_analyzer(
                 common_grams_config(tokenizer, tokenizer == "char_group"
                                                        ? whitespace_tokenizer_settings()
@@ -511,7 +511,7 @@ TEST_F(CustomAnalyzerTest, CommonGramsAcceptsReviewedUnitPositionFactories) {
                 AnalysisPurpose::kIndex));
     }
 
-    for (const std::string& filter : {"empty", "lowercase", "icu_normalizer", "asciifolding"}) {
+    for (const std::string filter : {"empty", "lowercase", "icu_normalizer", "asciifolding"}) {
         EXPECT_NO_THROW(CustomAnalyzer::build_custom_analyzer(
                 common_grams_config("char_group", whitespace_tokenizer_settings(), {{filter, {}}}),
                 AnalysisPurpose::kIndex));
@@ -536,7 +536,7 @@ TEST_F(CustomAnalyzerTest, CommonGramsRejectsTokensNormalizedToEmpty) {
 }
 
 TEST_F(CustomAnalyzerTest, CommonGramsInternalQueryFiltersAreNotRegistered) {
-    for (const std::string& internal : {"common_grams_query", "common_grams_phrase_prefix"}) {
+    for (const std::string internal : {"common_grams_query", "common_grams_phrase_prefix"}) {
         CustomAnalyzerConfig::Builder builder;
         builder.with_tokenizer_config("char_group", whitespace_tokenizer_settings());
         builder.add_token_filter_config(internal, {});
