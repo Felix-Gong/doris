@@ -225,7 +225,7 @@ std::vector<segment_v2::TermInfo> FunctionMatchBase::analyse_query_str_token(
     return query_tokens;
 }
 
-inline std::vector<segment_v2::TermInfo> FunctionMatchBase::analyse_data_token(
+std::vector<segment_v2::TermInfo> FunctionMatchBase::analyse_data_token(
         const std::string& column_name, const InvertedIndexAnalyzerCtx* analyzer_ctx,
         const ColumnString* string_col, int32_t current_block_row_idx,
         const ColumnArray::Offsets64* array_offsets, int32_t& current_src_array_offset) const {
